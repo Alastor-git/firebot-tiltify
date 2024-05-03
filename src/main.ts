@@ -9,6 +9,7 @@ import {
 } from "@crowbartools/firebot-custom-scripts-types";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { JsonDB } from "node-json-db";
+import axios from "axios";
 
 import { TiltifyEventSource } from "./events/tiltify-event-source";
 import { TILTIFY_EVENT_SOURCE_ID, TILTIFY_DONATION_EVENT_ID } from "./constants";
@@ -127,7 +128,12 @@ class TiltifyIntegration
     unlink() { }
 
     async connect(integrationData: IntegrationData) {
-        const token = integrationManager.getIntegrationDefinitionById("tiltify")?.auth?.access_token;
+        let token = integrationManager.getIntegrationDefinitionById("tiltify")?.auth?.access_token;
+
+        if (await validateToken(token) !== true) {
+            token = await this.refreshToken();
+        }
+
         if (token == null || token === "") {
             this.emit("disconnected", integrationDefinition.id);
             this.connected = false;
@@ -158,13 +164,16 @@ class TiltifyIntegration
         const causeInfo = await getCause(token, campaignInfo.cause_id);
 
         this.timeout = setInterval(async () => {
-            const token = integrationManager.getIntegrationDefinitionById("tiltify")?.auth?.access_token;
+            let token = integrationManager.getIntegrationDefinitionById("tiltify")?.auth?.access_token;
 
-            if (!validateToken(token)) {
-                this.disconnect();
+            if (await validateToken(token) !== true) {
+                token = await this.refreshToken();
+            }
 
-                // @ts-ignore
-                integrationManager.connectIntegration("tiltify");
+            if (token == null || token === "") {
+                this.emit("disconnected", integrationDefinition.id);
+                this.connected = false;
+                return;
             }
 
             let lastDonationDate: string;
@@ -239,6 +248,33 @@ class TiltifyIntegration
             this.disconnect();
         }
         this.connect(integrationData);
+    }
+
+    // Doing this here because of a bug in Firebot where it isn't refreshing automatically
+    async refreshToken(): Promise<string> {
+        try {
+            const auth = integrationManager.getIntegrationDefinitionById("tiltify")?.auth;
+            // @ts-ignore
+            const authProvider = integrationDefinition.authProviderDetails;
+
+            if (auth != null) {
+                const url = `${authProvider.auth.tokenHost}${authProvider.auth.tokenPath}?client_id=${authProvider.client.id}&client_secret=${authProvider.client.secret}&grant_type=refresh_token&refresh_token=${auth.refresh_token}&scope=${authProvider.scopes}`;
+                const response = await axios.post(url);
+
+                if (response.status === 200) {
+                    const int = integrationManager.getIntegrationById("tiltify");
+                    // @ts-ignore
+                    integrationManager.saveIntegrationAuth(int, response.data);
+
+                    return response.data.access_token;
+                }
+            }
+        } catch (error) {
+            logger.error("Unable to refresh Tiltify token");
+            logger.debug(error);
+        }
+
+        return;
     }
 }
 
