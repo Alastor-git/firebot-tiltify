@@ -71,6 +71,7 @@ TiltifyIntegrationEvents
     timeout: NodeJS.Timeout;
     connected = false;
     private db: JsonDB;
+    private integrationId: string;
 
     constructor() {
         super();
@@ -98,6 +99,11 @@ TiltifyIntegrationEvents
             eventFilterManager.registerFilter(filter);
         }
 
+        this.integrationId =
+            integrationManager.getIntegrationDefinitionById<TiltifySettings>(
+                "tiltify"
+            ).id;
+
         frontendCommunicator.onAsync("get-tiltify-rewards", async () => {
             if (!TiltifyIntegration.isIntegrationConfigValid()) {
                 throw new Error(
@@ -107,10 +113,11 @@ TiltifyIntegrationEvents
 
             const integration =
                 integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                    "tiltify"
+                    this.integrationId
                 );
-            const authData: LinkData =
-                await integrationManager.getAuth("tiltify");
+            const authData: LinkData = await integrationManager.getAuth(
+                this.integrationId
+            );
             if (authData === null || "auth" in authData === false) {
                 return;
             }
@@ -130,9 +137,11 @@ TiltifyIntegrationEvents
 
             const integration =
                 integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                    "tiltify"
+                    this.integrationId
                 );
-            const authData = await integrationManager.getAuth("tiltify");
+            const authData = await integrationManager.getAuth(
+                this.integrationId
+            );
             if (authData === null || "auth" in authData === false) {
                 return;
             }
@@ -166,7 +175,7 @@ TiltifyIntegrationEvents
         });
 
         integrationManager.on("token-refreshed", ({ integrationId }) => {
-            if (integrationId === "tiltify") {
+            if (integrationId === this.integrationId) {
                 logger.debug("Tiltify token refreshed");
             }
         });
@@ -183,53 +192,79 @@ TiltifyIntegrationEvents
         logger.info("Tiltify integration unlinked.");
     }
 
-    async connect(integrationData: IntegrationData) {
+    async isTokenValid(): Promise<boolean> {
         // Get the saved access token
-        const integrationDefinition =
-            integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                "tiltify"
-            );
-        const authData = await integrationManager.getAuth("tiltify");
+        const authData = await integrationManager.getAuth(this.integrationId);
+        let token: AuthDetails;
+        if (authData === null) {
+            logger.debug("Tiltify : Couldn't retrieve a valid token. ");
+            logger.debug("Tiltify : Attempting to refresh token. ");
+            token = await integrationManager.refreshToken(this.integrationId);
+        } else {
+            if ("auth" in authData === false) {
+                logger.warn("Tiltify : Invalid authentication data. ");
+                return false;
+            }
+            token = authData.auth;
+        }
+        // Check whether the token is still valid.
+        if ((await validateToken(token.access_token)) === true) {
+            return true;
+        }
+        // Token wasn't valid, attempt to refresh it
+        logger.debug("Tiltify : Token invalid. ");
+        logger.debug("Tiltify : Attempting to refresh token. ");
+        token = await integrationManager.refreshToken(this.integrationId);
+        // The refreshing fails.
+        if (token === null) {
+            logger.debug("Tiltify : Refreshing token failed. ");
+            return false;
+        }
+    }
+
+    async getAuth(): Promise<AuthDetails> {
+        const authData = await integrationManager.getAuth(this.integrationId);
         if (authData === null || "auth" in authData === false) {
             return;
         }
-        let token = authData.auth?.access_token;
-        // Check whether the token is still valid, and if needed, refresh it.
-        if ((await validateToken(token)) !== true) {
-            logger.debug("Tiltify : Token invalid. Refreshing token. ");
-            token = await this.refreshToken("tiltify");
-        }
-        // If the refreshing fails, disconnect tiltify.
-        if (token == null || token === "") {
-            logger.debug(
-                "Tiltify : Refreshing token failed. Disconnecting Tiltify. "
-            );
-            this.emit("disconnected", integrationDefinition.id);
+        return authData.auth;
+    }
+
+    async connect(integrationData: IntegrationData) {
+        // disconnect if we don't have a good auth token
+        if (!this.isTokenValid()) {
+            logger.debug("Tiltify : Disconnecting Tiltify.");
+            this.emit("disconnected", this.integrationId);
             this.connected = false;
             return;
         }
+
         // Disconnect if the settings for the integration aren't valid.
         if (
             integrationData.userSettings == null ||
             integrationData.userSettings.campaignSettings == null
         ) {
-            logger.debug(
-                "Tiltify : Integration settings invalid. Disconnecting Tiltify. "
-            );
-            this.emit("disconnected", integrationDefinition.id);
+            logger.debug("Tiltify : Integration settings invalid. ");
+            logger.debug("Tiltify : Disconnecting Tiltify.");
+            this.emit("disconnected", this.integrationId);
             this.connected = false;
             return;
         }
 
         // Checking the campaign Id is present.
-        const campaignId = integrationData?.userSettings?.campaignSettings
-            ?.campaignId as string;
+        const campaignId = integrationData.userSettings.campaignSettings
+            .campaignId as string;
         if (campaignId == null || campaignId === "") {
-            logger.debug("Tiltify : No campaign Id. Disconnecting Tiltify. ");
-            this.emit("disconnected", integrationDefinition.id);
+            logger.debug("Tiltify : No campaign Id. ");
+            logger.debug("Tiltify : Disconnecting Tiltify.");
+            this.emit("disconnected", this.integrationId);
             this.connected = false;
             return;
         }
+
+        // Get the saved access token
+        const authData = await this.getAuth();
+        const token = authData.access_token;
 
         // Populate information about the campaign. This is mandatory to have. If not, we have a problem.
         // This contains the money raised, so it will update
@@ -239,9 +274,10 @@ TiltifyIntegrationEvents
         );
         if (campaignInfo?.cause_id == null || campaignInfo.cause_id === "") {
             logger.debug(
-                `Tiltify : information about campaign ${campaignId} couldn't be retrieved or are invalid. Disconnecting Tiltify. `
+                `Tiltify : information about campaign ${campaignId} couldn't be retrieved or are invalid. `
             );
-            this.emit("disconnected", integrationDefinition.id);
+            logger.debug("Tiltify : Disconnecting Tiltify.");
+            this.emit("disconnected", this.integrationId);
             this.connected = false;
             return;
         }
