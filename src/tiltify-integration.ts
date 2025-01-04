@@ -723,6 +723,61 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                 ?.campaignId !== ""
         );
     }
+
+    async loadMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
+        let savedMilestones: TiltifyMilestone[];
+        try {
+            savedMilestones = await this.db.getData(
+                `/tiltify/${campaignId}/milestones`
+            );
+        } catch {
+            savedMilestones = [];
+        }
+        return savedMilestones;
+    }
+
+    saveMilestones(campaignId: string, milestones: TiltifyMilestone[]): void {
+        this.db.push(`/tiltify/${campaignId}/milestones`, milestones);
+    }
+
+    async loadDonations(
+        campaignId: string
+    ): Promise<{ lastDonationDate: string; ids: string[] }> {
+        let lastDonationDate: string;
+        try {
+            lastDonationDate = await this.db.getData(
+                `/tiltify/${campaignId}/lastDonationDate`
+            );
+        } catch (e) {
+            logger.debug(
+                `Tiltify : Couldn't find the last donation date in campaign ${campaignId}. `
+            );
+            lastDonationDate = null;
+        }
+
+        // Loading the IDs of known donations for this campaign
+        let ids: string[] = [];
+        try {
+            ids = await this.db.getData(`/tiltify/${campaignId}/ids`);
+        } catch (e) {
+            logger.debug(
+                `Tiltify : No donations saved for campaign ${campaignId}. Initializing database. `
+            );
+            this.db.push(`/tiltify/${campaignId}/ids`, []);
+        }
+        return { lastDonationDate: lastDonationDate, ids: ids };
+    }
+
+    saveDonations(
+        campaignId: string,
+        { lastDonationDate, ids }: { lastDonationDate: string; ids: string[] }
+    ): void {
+        this.db.push(`/tiltify/${campaignId}/ids`, ids);
+        this.db.push(
+            `/tiltify/${campaignId}/lastDonationDate`,
+            lastDonationDate
+        );
+    }
 }
 
 export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
