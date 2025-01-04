@@ -86,4 +86,8 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
             this.stop(campaignId);
         }
     }
+
+    public isStarted(campaignId: string): boolean {
+        return !!this.pollerStarted[campaignId];
+    }
 }
