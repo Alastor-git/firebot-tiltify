@@ -11,6 +11,7 @@ class TiltifyPollService extends TypedEmitter<PollingEvents> {
     private poller: { [campaignId: string]: NodeJS.Timeout };
     private pollingInterval: { [campaignId: string]: number };
     private pollerData: { [campaignId: string]: TiltifyCampaignData };
+    private pollerStarted: { [campaignId: string]: boolean };
     private defaultPollingInterval = 15000;
 
     public setPollingInterval(
@@ -31,6 +32,10 @@ class TiltifyPollService extends TypedEmitter<PollingEvents> {
     private clearPoll(campaignId: string) {
         if (this.poller[campaignId] != null) {
             clearInterval(this.poller[campaignId]);
+            delete this.poller[campaignId];
+            delete this.pollingInterval[campaignId];
+            delete this.pollerStarted[campaignId];
+            delete this.pollerData[campaignId];
         }
     }
 
@@ -51,27 +56,37 @@ class TiltifyPollService extends TypedEmitter<PollingEvents> {
         interval: number = this.defaultPollingInterval
     ) {
         this.clearPoll(campaignId);
-
+        this.pollerStarted[campaignId] = true;
         this.startPollActions(campaignId);
+
+        if (!this.pollerStarted[campaignId]) {
+            this.clearPoll(campaignId);
+            logger.debug(
+                `Tiltify: Failed to start polling Tiltify campaign ${campaignId}.`
+            );
+            this.emit("polling-stopped", campaignId);
+            return;
+        }
+
         this.poller[campaignId] = setInterval(
             () => this.poll(campaignId),
             interval
         );
 
-        this.emit("polling-started", campaignId);
         logger.debug(
             `Tiltify: Started polling Tiltify campaign ${campaignId}.`
         );
+        this.emit("polling-started", campaignId);
     }
 
     public stop(campaignId: string) {
-        this.clearPoll(campaignId);
         this.stopPollActions(campaignId);
+        this.clearPoll(campaignId);
 
-        this.emit("polling-stopped", campaignId);
         logger.debug(
             `Tiltify: Stopped polling Tiltify campaing ${campaignId}.`
         );
+        this.emit("polling-stopped", campaignId);
     }
 
     public stopAll() {
