@@ -26,6 +26,7 @@ import {
 import { TiltifyCampaign } from "./types/campaign";
 import { TiltifyCampaignReward } from "./types/campaign-reward";
 import { TiltifyMilestone } from "./types/milestone";
+import { TiltifyCampaignData } from "./types/campaign-data";
 
 import { TiltifyDonationEventData } from "./events/donation-event-data";
 import { TiltifyMilestoneReachedEventData } from "./events/milestone-reached-event-data";
@@ -265,14 +266,21 @@ TiltifyIntegrationEvents
         // Get the saved access token
         const authData = await this.getAuth();
         const token = authData.access_token;
+        const campaignData: TiltifyCampaignData = {
+            campaignId: campaignId,
+            cause: null,
+            campaign: null,
+            milestones: [],
+            rewards: []
+        };
 
         // Populate information about the campaign. This is mandatory to have. If not, we have a problem.
         // This contains the money raised, so it will update
-        let campaignInfo: TiltifyCampaign = await getCampaign(
-            token,
-            campaignId
-        );
-        if (campaignInfo?.cause_id == null || campaignInfo.cause_id === "") {
+        campaignData.campaign = await getCampaign(token, campaignId);
+        if (
+            campaignData.campaign?.cause_id == null ||
+            campaignData.campaign.cause_id === ""
+        ) {
             logger.debug(
                 `Tiltify : information about campaign ${campaignId} couldn't be retrieved or are invalid. `
             );
@@ -283,17 +291,16 @@ TiltifyIntegrationEvents
         }
 
         // Populate info about the cause the campaign is collecting for. This should not change
-        const causeInfo = await getCause(token, campaignInfo.cause_id);
-
+        campaignData.cause = await getCause(
+            token,
+            campaignData.campaign.cause_id
+        );
         // Populate info about the rewards offered.
         // This is gonna update to reflect the quantities available and offered and possible new rewards.
-        let rewardsInfo: TiltifyCampaignReward[] = await fetchRewards(
-            token,
-            campaignId
-        );
+        campaignData.rewards = await fetchRewards(token, campaignId);
         logger.debug(
             "Tiltify: Campaign Rewards: ",
-            rewardsInfo
+            campaignData.rewards
                 .map(
                     re => `
 ID: ${re.id}
@@ -306,13 +313,10 @@ Active: ${re.active}`
 
         // Populate info about the Milestones.
         // This is gonna update to reflect the activation and possible new Milestones.
-        let milestonesInfo: TiltifyMilestone[] = await getMilestones(
-            token,
-            campaignId
-        );
+        campaignData.milestones = await getMilestones(token, campaignId);
         logger.debug(
             "Tiltify: Campaign Milestones: ",
-            milestonesInfo
+            campaignData.milestones
                 .map(
                     mi => `
 ID: ${mi.id}
@@ -334,10 +338,10 @@ Reached: ${mi.reached}`
             savedMilestones = [];
         }
 
-        milestonesInfo.forEach((milestone: TiltifyMilestone) => {
+        campaignData.milestones.forEach((milestone: TiltifyMilestone) => {
             // Check if loaded milestone has been reached
             milestone.reached =
-                Number(campaignInfo?.amount_raised?.value ?? 0) >=
+                Number(campaignData.campaign?.amount_raised?.value ?? 0) >=
                 Number(milestone.amount.value);
             // Checked the saved value for the milestone
             const savedMilestone: TiltifyMilestone = savedMilestones.find(
@@ -358,7 +362,10 @@ Reached: ${mi.reached}`
                 );
             }
         });
-        this.db.push(`/tiltify/${campaignId}/milestones`, milestonesInfo);
+        this.db.push(
+            `/tiltify/${campaignId}/milestones`,
+            campaignData.milestones
+        );
 
         // This is the loop that updates. We register it now, but it's gonna update asynchronously
         this.timeout = setInterval(
@@ -431,13 +438,21 @@ Reached: ${mi.reached}`
                     }
 
                     // A donation has happened. Reload campaign info to update collected amounts
-                    campaignInfo = await getCampaign(token, campaignId);
+                    campaignData.campaign = await getCampaign(
+                        token,
+                        campaignId
+                    );
                     // If we don't know the reward, reload rewards and retry.
                     let matchingreward: TiltifyCampaignReward =
-                        rewardsInfo.find(ri => ri.id === donation.reward_id);
+                        campaignData.rewards.find(
+                            ri => ri.id === donation.reward_id
+                        );
                     if (!matchingreward) {
-                        rewardsInfo = await fetchRewards(token, campaignId);
-                        matchingreward = rewardsInfo.find(
+                        campaignData.rewards = await fetchRewards(
+                            token,
+                            campaignId
+                        );
+                        matchingreward = campaignData.rewards.find(
                             ri => ri.id === donation.reward_id
                         );
                     }
@@ -456,26 +471,30 @@ Reached: ${mi.reached}`
                         pollOptionId: donation.poll_option_id,
                         challengeId: donation.target_id,
                         campaignInfo: {
-                            name: campaignInfo?.name,
-                            cause: causeInfo?.name,
-                            causeLegalName: causeInfo?.name,
+                            name: campaignData.campaign?.name,
+                            cause: campaignData.cause?.name,
+                            causeLegalName: campaignData.cause?.name,
                             fundraisingGoal: Number(
-                                campaignInfo?.goal?.value ?? 0
+                                campaignData.campaign?.goal?.value ?? 0
                             ),
                             originalGoal: Number(
-                                campaignInfo?.original_goal?.value ?? 0
+                                campaignData.campaign?.original_goal?.value ?? 0
                             ),
                             supportingRaised:
                                 Number(
-                                    campaignInfo?.total_amount_raised?.value ??
-                                        0
+                                    campaignData.campaign?.total_amount_raised
+                                        ?.value ?? 0
                                 ) -
-                                Number(campaignInfo?.amount_raised?.value ?? 0),
+                                Number(
+                                    campaignData.campaign?.amount_raised
+                                        ?.value ?? 0
+                                ),
                             amountRaised: Number(
-                                campaignInfo?.amount_raised?.value ?? 0
+                                campaignData.campaign?.amount_raised?.value ?? 0
                             ),
                             totalRaised: Number(
-                                campaignInfo?.total_amount_raised?.value ?? 0
+                                campaignData.campaign?.total_amount_raised
+                                    ?.value ?? 0
                             )
                         }
                     };
@@ -512,8 +531,9 @@ Cause : ${eventDetails.campaignInfo.cause}`);
                     // Check if milestone has been reached
                     if (
                         !milestone.reached &&
-                        Number(campaignInfo?.amount_raised?.value ?? 0) >=
-                            Number(milestone.amount.value)
+                        Number(
+                            campaignData.campaign?.amount_raised?.value ?? 0
+                        ) >= Number(milestone.amount.value)
                     ) {
                         milestone.reached = true;
                         milestoneTriggered = true;
@@ -523,29 +543,32 @@ Cause : ${eventDetails.campaignInfo.cause}`);
                             name: milestone.name,
                             amount: Number(milestone.amount.value),
                             campaignInfo: {
-                                name: campaignInfo?.name,
-                                cause: causeInfo?.name,
-                                causeLegalName: causeInfo?.name,
+                                name: campaignData.campaign?.name,
+                                cause: campaignData.cause?.name,
+                                causeLegalName: campaignData.cause?.name,
                                 fundraisingGoal: Number(
-                                    campaignInfo?.goal?.value ?? 0
+                                    campaignData.campaign?.goal?.value ?? 0
                                 ),
                                 originalGoal: Number(
-                                    campaignInfo?.original_goal?.value ?? 0
+                                    campaignData.campaign?.original_goal
+                                        ?.value ?? 0
                                 ),
                                 supportingRaised:
                                     Number(
-                                        campaignInfo?.total_amount_raised
-                                            ?.value ?? 0
+                                        campaignData.campaign
+                                            ?.total_amount_raised?.value ?? 0
                                     ) -
                                     Number(
-                                        campaignInfo?.amount_raised?.value ?? 0
+                                        campaignData.campaign?.amount_raised
+                                            ?.value ?? 0
                                     ),
                                 amountRaised: Number(
-                                    campaignInfo?.amount_raised?.value ?? 0
+                                    campaignData.campaign?.amount_raised
+                                        ?.value ?? 0
                                 ),
                                 totalRaised: Number(
-                                    campaignInfo?.total_amount_raised?.value ??
-                                        0
+                                    campaignData.campaign?.total_amount_raised
+                                        ?.value ?? 0
                                 )
                             }
                         };
@@ -566,42 +589,50 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                 });
                 if (milestoneTriggered) {
                     // if we triggered a milestone, we want to reload the milestones from tiltify.
-                    milestonesInfo = await getMilestones(token, campaignId);
-                    milestonesInfo.forEach((milestone: TiltifyMilestone) => {
-                        // Check if loaded milestone has been reached
-                        milestone.reached =
-                            Number(campaignInfo?.amount_raised?.value ?? 0) >=
-                            Number(milestone.amount.value);
-                        // Checked the saved value for the milestone
-                        const savedMilestone: TiltifyMilestone =
-                            savedMilestones.find(
-                                (mi: TiltifyMilestone) => mi.id === milestone.id
-                            );
-                        // If the milestone was unknown
-                        if (!savedMilestone) {
-                            // Set reached as false so the event triggers
-                            milestone.reached = false;
-                            logger.debug(
-                                `Tiltify: Campaign Milestone ${milestone.name} is new. `
-                            );
-                        } else if (
-                            milestone.reached &&
-                            !savedMilestone.reached
-                        ) {
-                            // If the saved milestone was unreached, we want to make sure that if it's currently reached, we trip the event too
-                            milestone.reached = false;
-                            logger.debug(
-                                `Tiltify: Campaign Milestone ${milestone.name} has updated and isn't reached anymore. Ensuring the event triggers. `
-                            );
+                    campaignData.milestones = await getMilestones(
+                        token,
+                        campaignId
+                    );
+                    campaignData.milestones.forEach(
+                        (milestone: TiltifyMilestone) => {
+                            // Check if loaded milestone has been reached
+                            milestone.reached =
+                                Number(
+                                    campaignData.campaign?.amount_raised
+                                        ?.value ?? 0
+                                ) >= Number(milestone.amount.value);
+                            // Checked the saved value for the milestone
+                            const savedMilestone: TiltifyMilestone =
+                                savedMilestones.find(
+                                    (mi: TiltifyMilestone) =>
+                                        mi.id === milestone.id
+                                );
+                            // If the milestone was unknown
+                            if (!savedMilestone) {
+                                // Set reached as false so the event triggers
+                                milestone.reached = false;
+                                logger.debug(
+                                    `Tiltify: Campaign Milestone ${milestone.name} is new. `
+                                );
+                            } else if (
+                                milestone.reached &&
+                                !savedMilestone.reached
+                            ) {
+                                // If the saved milestone was unreached, we want to make sure that if it's currently reached, we trip the event too
+                                milestone.reached = false;
+                                logger.debug(
+                                    `Tiltify: Campaign Milestone ${milestone.name} has updated and isn't reached anymore. Ensuring the event triggers. `
+                                );
+                            }
                         }
-                    });
+                    );
                 } else {
-                    milestonesInfo = savedMilestones;
+                    campaignData.milestones = savedMilestones;
                 }
                 // Save the milestones
                 this.db.push(
                     `/tiltify/${campaignId}/milestones`,
-                    milestonesInfo
+                    campaignData.milestones
                 );
             },
             (integrationData.userSettings.integrationSettings

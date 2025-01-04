@@ -1,5 +1,6 @@
 import { TypedEmitter } from "tiny-typed-emitter";
 import { logger } from "@shared/firebot-modules";
+import { TiltifyCampaignData } from "./types/campaign-data";
 
 interface PollingEvents {
     "polling-started": (campaignId: string) => void;
@@ -9,6 +10,7 @@ interface PollingEvents {
 class TiltifyPollService extends TypedEmitter<PollingEvents> {
     private poller: { [campaignId: string]: NodeJS.Timeout };
     private pollingInterval: { [campaignId: string]: number };
+    private pollerData: { [campaignId: string]: TiltifyCampaignData };
     private defaultPollingInterval = 15000;
 
     public setPollingInterval(
