@@ -1,49 +1,82 @@
 import { TypedEmitter } from "tiny-typed-emitter";
-import {
-    logger
-} from "@shared/firebot-modules";
+import { logger } from "@shared/firebot-modules";
 
-interface ConnectionEvents {
-    connected: VoidFunction;
-    disconnected: VoidFunction;
+interface PollingEvents {
+    "polling-started": (campaignId: string) => void;
+    "polling-stopped": (campaignId: string) => void;
 }
 
-class TiltifyPollService extends TypedEmitter<ConnectionEvents> {
-    private pollId: NodeJS.Timeout;
-    private pollingInterval = 15000;
+class TiltifyPollService extends TypedEmitter<PollingEvents> {
+    private poller: { [campaignId: string]: NodeJS.Timeout };
+    private pollingInterval: { [campaignId: string]: number };
+    private defaultPollingInterval = 15000;
 
-    setPollingInterval(interval:number) {
-        this.pollingInterval = interval;
+    public setPollingInterval(
+        campaignId: string,
+        interval: number = this.defaultPollingInterval
+    ) {
+        this.pollingInterval[campaignId] = interval;
         // If polling is happening, reset the interval
-        if (this.pollId != null) {
-            clearInterval(this.pollId);
-            this.pollId = setInterval(() => this.poll(), this.pollingInterval);
+        if (this.poller != null) {
+            clearInterval(this.poller[campaignId]);
+            this.poller[campaignId] = setInterval(
+                () => this.poll(campaignId),
+                this.pollingInterval[campaignId]
+            );
         }
     }
 
-    private clearPoll() {
-        if (this.pollId != null) {
-            clearInterval(this.pollId);
+    private clearPoll(campaignId: string) {
+        if (this.poller[campaignId] != null) {
+            clearInterval(this.poller[campaignId]);
         }
     }
 
-    private async poll() {
+    private async startPollActions(campaignId: string) {
+        // TODO : Include here the actions you need to do only once before the poll starts
+    }
+
+    private async poll(campaignId: string) {
         // TODO : Poll here the data from Tiltify
     }
 
-    async start() {
-        this.clearPoll();
-
-        this.pollId = setInterval(() => this.poll(), this.pollingInterval);
-
-        this.emit("connected");
-        logger.debug("Started polling Tiltify.");
+    private async stopPollActions(campaignId: string) {
+        // TODO : Include here the actions you need to do only once after the poll ends
     }
 
-    stop() {
-        this.clearPoll();
-        this.emit("disconnected");
-        logger.debug("Stopped polling Tiltify.");
+    public async start(
+        campaignId: string,
+        interval: number = this.defaultPollingInterval
+    ) {
+        this.clearPoll(campaignId);
+
+        this.startPollActions(campaignId);
+        this.poller[campaignId] = setInterval(
+            () => this.poll(campaignId),
+            interval
+        );
+
+        this.emit("polling-started", campaignId);
+        logger.debug(
+            `Tiltify: Started polling Tiltify campaign ${campaignId}.`
+        );
+    }
+
+    public stop(campaignId: string) {
+        this.clearPoll(campaignId);
+        this.stopPollActions(campaignId);
+
+        this.emit("polling-stopped", campaignId);
+        logger.debug(
+            `Tiltify: Stopped polling Tiltify campaing ${campaignId}.`
+        );
+    }
+
+    public stopAll() {
+        logger.debug(`Tiltify: Stopping polling for all Tiltify campaigns.`);
+        for (const campaignId of Object.keys(this.poller)) {
+            this.stop(campaignId);
+        }
     }
 }
 export const tiltifyPollService = new TiltifyPollService();
