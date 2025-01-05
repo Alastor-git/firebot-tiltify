@@ -1,6 +1,8 @@
 import { TiltifyDonation } from "@/types/donation";
-import { TiltifyCampaignEventData } from "./campaign-event-data";
+import { CampaignEvent, TiltifyCampaignEventData } from "./campaign-event-data";
 import { TiltifyCampaignReward } from "@/types/campaign-reward";
+import { TiltifyCampaign } from "@/types/campaign";
+import { TiltifyCause } from "@/types/cause";
 
 export type TiltifyDonationEventData = TiltifyCampaignEventData & {
     from: string;
@@ -12,18 +14,66 @@ export type TiltifyDonationEventData = TiltifyCampaignEventData & {
     challengeId: string;
 };
 
-export function createDonationEvent(
-    campaignEvent: TiltifyCampaignEventData,
-    donation: TiltifyDonation,
-    matchingreward: TiltifyCampaignReward = null
-): TiltifyDonationEventData {
-    const eventDetails = campaignEvent as TiltifyDonationEventData;
-    eventDetails.from = donation.donor_name;
-    eventDetails.donationAmount = Number(donation.amount.value);
-    eventDetails.rewardId = donation.reward_id;
-    eventDetails.rewardName = matchingreward?.name ?? "";
-    eventDetails.comment = donation.donor_comment;
-    eventDetails.pollOptionId = donation.poll_option_id;
-    eventDetails.challengeId = donation.target_id;
-    return eventDetails;
+export class DonationEvent {
+    data: TiltifyDonationEventData;
+
+    constructor();
+    constructor(
+        donationData: TiltifyDonation,
+        matchingRewardData?: TiltifyCampaignReward
+    );
+    constructor(
+        donationData: TiltifyDonation,
+        matchingRewardData: TiltifyCampaignReward,
+        campaignData: TiltifyCampaign,
+        causeData?: TiltifyCause
+    );
+    constructor(
+        donationData: TiltifyDonation,
+        matchingRewardData: TiltifyCampaignReward,
+        campaignData: CampaignEvent
+    );
+    constructor(
+        donationData?: TiltifyDonation,
+        matchingRewardData?: TiltifyCampaignReward,
+        campaignData?: TiltifyCampaign | CampaignEvent,
+        causeData?: TiltifyCause
+    ) {
+        let campaignEvent: CampaignEvent;
+        if (campaignData instanceof CampaignEvent) {
+            campaignEvent = campaignData;
+        } else {
+            campaignEvent = new CampaignEvent(campaignData, causeData);
+        }
+        this.data = {
+            ...campaignEvent.valueOf(),
+            from: donationData?.donor_name ?? "",
+            donationAmount: Number(donationData?.amount?.value ?? 0),
+            rewardId: donationData?.reward_id ?? "",
+            rewardName: matchingRewardData?.name ?? "",
+            comment: donationData?.donor_comment ?? "",
+            pollOptionId: donationData?.poll_option_id ?? "",
+            challengeId: donationData?.target_id ?? ""
+        };
+    }
+
+    valueOf(): TiltifyDonationEventData {
+        return this.data;
+    }
 }
+
+declare module "./campaign-event-data" {
+    interface CampaignEvent {
+        createDonationEvent(
+            donation: TiltifyDonation,
+            matchingReward: TiltifyCampaignReward
+        ): DonationEvent;
+    }
+}
+
+CampaignEvent.prototype.createDonationEvent = function (
+    donation: TiltifyDonation,
+    matchingReward: TiltifyCampaignReward = null
+): DonationEvent {
+    return new DonationEvent(donation, matchingReward, this);
+};

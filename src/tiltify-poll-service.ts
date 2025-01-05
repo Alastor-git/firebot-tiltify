@@ -23,19 +23,10 @@ import {
 
 import { TiltifyIntegration, TiltifySettings } from "./tiltify-integration";
 
-import {
-    createDonationEvent,
-    TiltifyDonationEventData
-} from "./events/donation-event-data";
-import {
-    createMilestoneReachedEvent,
-    TiltifyMilestoneReachedEventData
-} from "./events/milestone-reached-event-data";
+import { TiltifyDonationEventData } from "./events/donation-event-data";
+import { TiltifyMilestoneReachedEventData } from "./events/milestone-reached-event-data";
 import { TiltifyDonation } from "./types/donation";
-import {
-    createCampaignEvent,
-    TiltifyCampaignEventData
-} from "./events/campaign-event-data";
+import { CampaignEvent } from "./events/campaign-event-data";
 
 class TiltifyPollService extends AbstractPollService {
     private integrationController: TiltifyIntegration;
@@ -85,6 +76,8 @@ class TiltifyPollService extends AbstractPollService {
         // TODO : Poll here the data from Tiltify
 
         // FIXME: If connexion fails, we should stop the poller
+        // FIXME: Error handling. What happens if token dies or Promise otherwise rejected ?
+        // FIXME: Auto reconnecting if disconnected ? How does Firebot handle this ?
 
         // Check for new donations
         await this.updateDonations(campaignId);
@@ -294,15 +287,12 @@ Active: ${re.active}`
         this.pollerData[campaignId].lastDonationDate = donation.completed_at;
 
         // Extract the info to populate a Firebot donation event.
-        const campaignEvent: TiltifyCampaignEventData = createCampaignEvent(
+        const eventDetails: TiltifyDonationEventData = new CampaignEvent(
             this.pollerData[campaignId].campaign,
             this.pollerData[campaignId].cause
-        );
-        const eventDetails: TiltifyDonationEventData = createDonationEvent(
-            campaignEvent,
-            donation,
-            matchingreward
-        );
+        )
+            .createDonationEvent(donation, matchingreward)
+            .valueOf();
 
         logger.info(`Tiltify : 
 Donation from ${eventDetails.from} for $${eventDetails.donationAmount}. 
@@ -362,12 +352,13 @@ Cause : ${eventDetails.campaignInfo.cause}`);
             milestone.reached = true;
             milestoneTriggered.value = true;
             // Extract the info to populate a Firebot milestone event.
-            const campaignEvent: TiltifyCampaignEventData = createCampaignEvent(
-                this.pollerData[campaignId].campaign,
-                this.pollerData[campaignId].cause
-            );
             const eventDetails: TiltifyMilestoneReachedEventData =
-                createMilestoneReachedEvent(campaignEvent, milestone);
+                new CampaignEvent(
+                    this.pollerData[campaignId].campaign,
+                    this.pollerData[campaignId].cause
+                )
+                    .createMilestoneEvent(milestone)
+                    .valueOf();
 
             logger.info(`Tiltify : 
 Milestone ${eventDetails.name} reached. 
