@@ -9,4 +9,6 @@ export type TiltifyCampaignData = {
     campaign: TiltifyCampaign;
     milestones: TiltifyMilestone[];
     rewards: TiltifyCampaignReward[];
+    lastDonationDate: string;
+    donationIds: string[];
 };
