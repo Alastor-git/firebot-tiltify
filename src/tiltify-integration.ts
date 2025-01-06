@@ -61,12 +61,13 @@ TiltifyIntegrationEvents
     private db: JsonDB;
     private integrationId: string;
 
-    constructor() {
+    constructor(integrationId: string) {
         super();
         this.timeout = null;
         this.connected = false;
         this.dbPath = path.join(SCRIPTS_DIR, "..", "db", "tiltify.db");
         this.db = new JsonDB(this.dbPath, true, false, "/");
+        this.integrationId = integrationId;
         // Returns error "TS2459: Module '"node-json-db"' declares 'Config' locally, but it is not exported." not sure why
     }
 
@@ -86,11 +87,6 @@ TiltifyIntegrationEvents
         for (const filter of filters) {
             eventFilterManager.registerFilter(filter);
         }
-
-        this.integrationId =
-            integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                "tiltify"
-            ).id;
 
         frontendCommunicator.onAsync("get-tiltify-rewards", async () => {
             if (!TiltifyIntegration.isIntegrationConfigValid()) {

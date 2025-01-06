@@ -23,7 +23,9 @@ import {
 
 import { TiltifyIntegration, TiltifySettings } from "./tiltify-integration";
 
+import "./events/donation-event-data"; // Solves module augmentation is not loaded
 import { TiltifyDonationEventData } from "./events/donation-event-data";
+import "./events/milestone-reached-event-data"; // Solves module augmentation is not loaded
 import { TiltifyMilestoneReachedEventData } from "./events/milestone-reached-event-data";
 import { TiltifyDonation } from "./types/donation";
 import { CampaignEvent } from "./events/campaign-event-data";
@@ -33,15 +35,16 @@ class TiltifyPollService extends AbstractPollService {
     declare protected pollerData: { [campaignId: string]: TiltifyCampaignData };
     declare protected pollerStarted: { [campaignId: string]: boolean };
 
-    constructor() {
-        super();
-        this.integrationController =
-            integrationManager.getIntegrationById<TiltifySettings>("tiltify")
-                .integration as TiltifyIntegration;
-    }
-
     protected async startPollActions(campaignId: string) {
         // TODO: Include here the actions you need to do only once before the poll starts
+
+        // Load the integrationcontroller if it hasen't been
+        if (!this.integrationController) {
+            this.integrationController =
+                integrationManager.getIntegrationById<TiltifySettings>(
+                    "tiltify"
+                ).integration as TiltifyIntegration;
+        }
 
         // Initiate the poller's data
         this.pollerData[campaignId] = {

@@ -36,7 +36,7 @@ const script: Firebot.CustomScript = {
         // Create and Register the integration
         const integrationConfig: Integration<TiltifySettings> = {
             definition: integrationDefinition,
-            integration: new TiltifyIntegration()
+            integration: new TiltifyIntegration(integrationDefinition.id)
         };
         integrationManager.registerIntegration(integrationConfig);
     },

@@ -7,10 +7,10 @@ interface PollingEvents {
 }
 
 export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
-    private poller: { [campaignId: string]: NodeJS.Timeout };
-    private pollingInterval: { [campaignId: string]: number };
-    protected pollerData: { [campaignId: string]: unknown };
-    protected pollerStarted: { [campaignId: string]: boolean };
+    private poller: { [campaignId: string]: NodeJS.Timeout } = {};
+    private pollingInterval: { [campaignId: string]: number } = {};
+    protected pollerData: { [campaignId: string]: unknown } = {};
+    protected pollerStarted: { [campaignId: string]: boolean } = {};
     private defaultPollingInterval = 15000;
 
     public setPollingInterval(
