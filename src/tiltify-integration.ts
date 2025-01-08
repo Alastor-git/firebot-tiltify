@@ -172,6 +172,7 @@ TiltifyIntegrationEvents
         // Once Linked, we're allowed to connect
         logger.info("Tiltify integration linked.");
     }
+
     unlink() {
         logger.info("Tiltify integration unlinked.");
     }

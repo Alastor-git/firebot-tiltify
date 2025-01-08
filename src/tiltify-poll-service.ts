@@ -99,7 +99,11 @@ class TiltifyPollService extends AbstractPollService {
 
         // Get the saved access token
         const authData = await this.integrationController.getAuth();
-        const token = authData.access_token;
+        const token = authData?.access_token;
+        // Check we managed to get a valid token
+        if (!token) {
+            return false;
+        }
 
         // Load the campaign data
         this.pollerData[campaignId].campaign = await getCampaign(
@@ -120,7 +124,7 @@ class TiltifyPollService extends AbstractPollService {
 
         // Get the saved access token
         const authData = await this.integrationController.getAuth();
-        const token = authData.access_token;
+        const token = authData?.access_token;
 
         // Collect data about the cause
         this.pollerData[campaignId].cause = await getCause(
@@ -135,7 +139,7 @@ class TiltifyPollService extends AbstractPollService {
 
         // Get the saved access token
         const authData = await this.integrationController.getAuth();
-        const token = authData.access_token;
+        const token = authData?.access_token;
 
         this.pollerData[campaignId].milestones = await getMilestones(
             token,
@@ -204,7 +208,7 @@ Reached: ${mi.reached}`
 
         // Get the saved access token
         const authData = await this.integrationController.getAuth();
-        const token = authData.access_token;
+        const token = authData?.access_token;
 
         this.pollerData[campaignId].rewards = await fetchRewards(
             token,
@@ -229,7 +233,7 @@ Active: ${re.active}`
     async updateDonations(campaignId: string) {
         // Get the saved access token
         const authData = await this.integrationController.getAuth();
-        const token = authData.access_token;
+        const token = authData?.access_token;
 
         // Load the last donation date if available
         const { lastDonationDate, ids } =
@@ -268,7 +272,7 @@ Active: ${re.active}`
 
         // Get the saved access token
         const authData = await this.integrationController.getAuth();
-        const token = authData.access_token;
+        const token = authData?.access_token;
         // A donation has happened. Reload campaign info to update collected amounts
         this.pollerData[campaignId].campaign = await getCampaign(
             token,
