@@ -6,6 +6,7 @@ import {
     LinkData,
     AuthDetails
 } from "@crowbartools/firebot-custom-scripts-types";
+import { TypedEmitter } from "tiny-typed-emitter";
 
 import { ReplaceVariable } from "@crowbartools/firebot-custom-scripts-types/types/modules/replace-variable-manager";
 import { EventFilter } from "@crowbartools/firebot-custom-scripts-types/types/modules/event-filter-manager";
@@ -50,10 +51,9 @@ export type TiltifySettings = {
 
 type TiltifyIntegrationEvents = IntegrationEvents;
 
-export class TiltifyIntegration extends IntegrationController<
-TiltifySettings,
-TiltifyIntegrationEvents
-> {
+export class TiltifyIntegration
+    extends TypedEmitter<TiltifyIntegrationEvents>
+    implements IntegrationController<TiltifySettings, TiltifyIntegrationEvents> {
     readonly dbPath: string;
 
     timeout: NodeJS.Timeout;
