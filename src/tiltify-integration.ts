@@ -14,12 +14,7 @@ import { EventFilter } from "@crowbartools/firebot-custom-scripts-types/types/mo
 import { JsonDB } from "node-json-db";
 import axios from "axios";
 
-import {
-    fetchRewards,
-    fetchPollOptions,
-    fetchTargets,
-    validateToken
-} from "./tiltify-remote";
+import { tiltifyAPIService } from "@services/tiltifyAPI/tiltify-remote";
 import { TiltifyMilestone } from "./types/milestone";
 
 import { TiltifyEventSource } from "./events/tiltify-event-source";
@@ -35,7 +30,7 @@ import {
     eventFilterManager,
     frontendCommunicator
 } from "@shared/firebot-modules";
-import { tiltifyPollService } from "./tiltify-poll-service";
+import { tiltifyPollService } from "@services/pollService/tiltify-poll-service";
 import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
 
 const path = require("path");
@@ -109,7 +104,7 @@ export class TiltifyIntegration
             const campaignId =
                 integration.userSettings.campaignSettings.campaignId;
 
-            return await fetchRewards(accessToken, campaignId);
+            return await tiltifyAPIService.getRewards(accessToken, campaignId);
         });
 
         frontendCommunicator.onAsync("get-tiltify-poll-options", async () => {
@@ -133,7 +128,10 @@ export class TiltifyIntegration
             const campaignId =
                 integration.userSettings.campaignSettings.campaignId;
 
-            return await fetchPollOptions(accessToken, campaignId);
+            return await tiltifyAPIService.getPollOptions(
+                accessToken,
+                campaignId
+            );
         });
 
         frontendCommunicator.onAsync("get-tiltify-challenges", async () => {
@@ -155,7 +153,7 @@ export class TiltifyIntegration
             const campaignId =
                 integration.userSettings.campaignSettings.campaignId;
 
-            return await fetchTargets(accessToken, campaignId);
+            return await tiltifyAPIService.getTargets(accessToken, campaignId);
         });
 
         integrationManager.on("token-refreshed", ({ integrationId }) => {
@@ -193,7 +191,7 @@ export class TiltifyIntegration
             token = authData.auth;
         }
         // Check whether the token is still valid.
-        if ((await validateToken(token.access_token)) === true) {
+        if ((await tiltifyAPIService.validateToken()) === true) {
             return true;
         }
         // Token wasn't valid, attempt to refresh it
@@ -208,7 +206,9 @@ export class TiltifyIntegration
     }
 
     async getAuth(): Promise<AuthDetails> {
-        const authData = await integrationManager.getAuth(this.integrationId);
+        const authData: LinkData = await integrationManager.getAuth(
+            this.integrationId
+        );
         if (authData === null || "auth" in authData === false) {
             return;
         }
