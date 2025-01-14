@@ -5,30 +5,24 @@ import {
     eventManager
 } from "@shared/firebot-modules";
 
-import { TiltifyCampaignData } from "./types/campaign-data";
-import { TiltifyMilestone } from "./types/milestone";
-import {
-    fetchRewards,
-    getCampaign,
-    getCause,
-    getCampaignDonations,
-    getMilestones
-} from "./tiltify-remote";
-import { TiltifyCampaignReward } from "./types/campaign-reward";
+import { TiltifyCampaignData } from "@/types/campaign-data";
+import { TiltifyMilestone } from "@/types/milestone";
+import { tiltifyAPIService } from "@services/tiltifyAPI/tiltify-remote";
+import { TiltifyCampaignReward } from "@/types/campaign-reward";
 import {
     TILTIFY_DONATION_EVENT_ID,
     TILTIFY_EVENT_SOURCE_ID,
     TILTIFY_MILESTONE_EVENT_ID
-} from "./constants";
+} from "@/constants";
 
-import { TiltifyIntegration, TiltifySettings } from "./tiltify-integration";
+import { TiltifyIntegration, TiltifySettings } from "@/tiltify-integration";
 
-import "./events/donation-event-data"; // Solves module augmentation is not loaded
-import { TiltifyDonationEventData } from "./events/donation-event-data";
-import "./events/milestone-reached-event-data"; // Solves module augmentation is not loaded
-import { TiltifyMilestoneReachedEventData } from "./events/milestone-reached-event-data";
-import { TiltifyDonation } from "./types/donation";
-import { CampaignEvent } from "./events/campaign-event-data";
+import "@/events/donation-event-data"; // Solves module augmentation is not loaded
+import { TiltifyDonationEventData } from "@/events/donation-event-data";
+import "@/events/milestone-reached-event-data"; // Solves module augmentation is not loaded
+import { TiltifyMilestoneReachedEventData } from "@/events/milestone-reached-event-data";
+import { TiltifyDonation } from "@/types/donation";
+import { CampaignEvent } from "@/events/campaign-event-data";
 
 class TiltifyPollService extends AbstractPollService {
     private integrationController: TiltifyIntegration;
@@ -97,19 +91,9 @@ class TiltifyPollService extends AbstractPollService {
         // Populate information about the campaign. This is mandatory to have. If not, we have a problem.
         // This contains the money raised, so it will update
 
-        // Get the saved access token
-        const authData = await this.integrationController.getAuth();
-        const token = authData?.access_token;
-        // Check we managed to get a valid token
-        if (!token) {
-            return false;
-        }
-
         // Load the campaign data
-        this.pollerData[campaignId].campaign = await getCampaign(
-            token,
-            campaignId
-        );
+        this.pollerData[campaignId].campaign =
+            await tiltifyAPIService.getCampaign(campaignId);
 
         // Check that the campaign data is valid
         const causeId = this.pollerData[campaignId].campaign?.cause_id;
@@ -127,7 +111,7 @@ class TiltifyPollService extends AbstractPollService {
         const token = authData?.access_token;
 
         // Collect data about the cause
-        this.pollerData[campaignId].cause = await getCause(
+        this.pollerData[campaignId].cause = await tiltifyAPIService.getCause(
             token,
             this.pollerData[campaignId].campaign.cause_id
         );
@@ -141,10 +125,8 @@ class TiltifyPollService extends AbstractPollService {
         const authData = await this.integrationController.getAuth();
         const token = authData?.access_token;
 
-        this.pollerData[campaignId].milestones = await getMilestones(
-            token,
-            campaignId
-        );
+        this.pollerData[campaignId].milestones =
+            await tiltifyAPIService.getMilestones(token, campaignId);
         // Load saved milestones if any
         // They are saved to keep memory of which milestones have previously been reached so we know what events to trigger
         const savedMilestones: TiltifyMilestone[] =
@@ -210,10 +192,8 @@ Reached: ${mi.reached}`
         const authData = await this.integrationController.getAuth();
         const token = authData?.access_token;
 
-        this.pollerData[campaignId].rewards = await fetchRewards(
-            token,
-            campaignId
-        );
+        this.pollerData[campaignId].rewards =
+            await tiltifyAPIService.getRewards(token, campaignId);
         if (verbose) {
             logger.debug(
                 "Tiltify: Campaign Rewards: ",
@@ -242,11 +222,12 @@ Active: ${re.active}`
         this.pollerData[campaignId].donationIds = ids;
 
         // Acquire the donations since the last saved from Tiltify and sort them by date.
-        const donations = await getCampaignDonations(
-            token,
-            campaignId,
-            this.pollerData[campaignId].lastDonationDate
-        );
+        const donations: TiltifyDonation[] =
+            await tiltifyAPIService.getCampaignDonations(
+                token,
+                campaignId,
+                this.pollerData[campaignId].lastDonationDate
+            );
         const sortedDonations = donations.sort(
             (a, b) => Date.parse(a.completed_at) - Date.parse(b.completed_at)
         );
@@ -270,14 +251,9 @@ Active: ${re.active}`
             return;
         }
 
-        // Get the saved access token
-        const authData = await this.integrationController.getAuth();
-        const token = authData?.access_token;
         // A donation has happened. Reload campaign info to update collected amounts
-        this.pollerData[campaignId].campaign = await getCampaign(
-            token,
-            campaignId
-        );
+        this.pollerData[campaignId].campaign =
+            await tiltifyAPIService.getCampaign(campaignId);
         // If we don't know the reward, reload rewards and retry.
         let matchingreward: TiltifyCampaignReward = this.pollerData[
             campaignId

@@ -13,7 +13,8 @@
         "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"],
-            "@shared/*": ["./src/shared/*"]
+            "@shared/*": ["./src/shared/*"],
+            "@services/*": ["./src/services/*"]
         }
     },
     "include": ["./src/**/*"]
