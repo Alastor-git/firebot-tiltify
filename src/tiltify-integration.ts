@@ -94,17 +94,10 @@ export class TiltifyIntegration
                 integrationManager.getIntegrationDefinitionById<TiltifySettings>(
                     this.integrationId
                 );
-            const authData: LinkData = await integrationManager.getAuth(
-                this.integrationId
-            );
-            if (authData === null || "auth" in authData === false) {
-                return;
-            }
-            const accessToken = authData.auth?.access_token;
             const campaignId =
                 integration.userSettings.campaignSettings.campaignId;
 
-            return await tiltifyAPIService.getRewards(accessToken, campaignId);
+            return await tiltifyAPIService.getRewards(campaignId);
         });
 
         frontendCommunicator.onAsync("get-tiltify-poll-options", async () => {
@@ -118,20 +111,10 @@ export class TiltifyIntegration
                 integrationManager.getIntegrationDefinitionById<TiltifySettings>(
                     this.integrationId
                 );
-            const authData = await integrationManager.getAuth(
-                this.integrationId
-            );
-            if (authData === null || "auth" in authData === false) {
-                return;
-            }
-            const accessToken = authData.auth?.access_token;
             const campaignId =
                 integration.userSettings.campaignSettings.campaignId;
 
-            return await tiltifyAPIService.getPollOptions(
-                accessToken,
-                campaignId
-            );
+            return await tiltifyAPIService.getPollOptions(campaignId);
         });
 
         frontendCommunicator.onAsync("get-tiltify-challenges", async () => {
@@ -145,15 +128,10 @@ export class TiltifyIntegration
                 integrationManager.getIntegrationDefinitionById<TiltifySettings>(
                     "tiltify"
                 );
-            const authData = await integrationManager.getAuth("tiltify");
-            if (authData === null || "auth" in authData === false) {
-                return;
-            }
-            const accessToken = authData.auth?.access_token;
             const campaignId =
                 integration.userSettings.campaignSettings.campaignId;
 
-            return await tiltifyAPIService.getTargets(accessToken, campaignId);
+            return await tiltifyAPIService.getTargets(campaignId);
         });
 
         integrationManager.on("token-refreshed", ({ integrationId }) => {

@@ -106,13 +106,8 @@ class TiltifyPollService extends AbstractPollService {
     async loadCause(campaignId: string) {
         // Populate info about the cause the campaign is collecting for. This should not change
 
-        // Get the saved access token
-        const authData = await this.integrationController.getAuth();
-        const token = authData?.access_token;
-
         // Collect data about the cause
         this.pollerData[campaignId].cause = await tiltifyAPIService.getCause(
-            token,
             this.pollerData[campaignId].campaign.cause_id
         );
     }
@@ -121,12 +116,8 @@ class TiltifyPollService extends AbstractPollService {
         // Populate info about the Milestones.
         // This is gonna update to reflect the activation and possible new Milestones.
 
-        // Get the saved access token
-        const authData = await this.integrationController.getAuth();
-        const token = authData?.access_token;
-
         this.pollerData[campaignId].milestones =
-            await tiltifyAPIService.getMilestones(token, campaignId);
+            await tiltifyAPIService.getMilestones(campaignId);
         // Load saved milestones if any
         // They are saved to keep memory of which milestones have previously been reached so we know what events to trigger
         const savedMilestones: TiltifyMilestone[] =
@@ -188,12 +179,8 @@ Reached: ${mi.reached}`
         // Populate info about the rewards offered.
         // This is gonna update to reflect the quantities available and offered and possible new rewards.
 
-        // Get the saved access token
-        const authData = await this.integrationController.getAuth();
-        const token = authData?.access_token;
-
         this.pollerData[campaignId].rewards =
-            await tiltifyAPIService.getRewards(token, campaignId);
+            await tiltifyAPIService.getRewards(campaignId);
         if (verbose) {
             logger.debug(
                 "Tiltify: Campaign Rewards: ",

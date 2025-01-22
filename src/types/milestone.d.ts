@@ -6,5 +6,5 @@ export type TiltifyMilestone = {
     amount: TiltifyMoney;
     updated_at: string;
     active: boolean;
-    reached: boolean;
+    reached?: boolean;
 };

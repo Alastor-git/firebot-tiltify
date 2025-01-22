@@ -1,9 +1,9 @@
 import { TiltifyMoney } from "./shared";
 
 export type TiltifyRewardClaim = {
-    id: string;
-    quantity: number;
-    reward_id: string;
+    id?: string;
+    quantity?: number;
+    reward_id?: string;
 };
 
 export type TiltifyDonation = {
