@@ -220,10 +220,9 @@ Active: ${re.active}`
         );
 
         // Process each donation
-        // FIXME : Technically, foreach isn't supposed to take an async function, but that's necessary to be able to await inside. What to do ?
-        sortedDonations.forEach(async (donation) => {
+        for (const donation of sortedDonations) {
             await this.processDonation(campaignId, donation);
-        }, this);
+        }
         // Save the Ids of the events processed and the time of the last donation made
         const donationData = {
             lastDonationDate: this.pollerData[campaignId].lastDonationDate,
@@ -255,6 +254,9 @@ Active: ${re.active}`
 
         // Update the last donation date to the current one.
         this.pollerData[campaignId].lastDonationDate = donation.completed_at;
+        logger.debug(
+            `Tiltify: Last processed donation at : ${this.pollerData[campaignId].lastDonationDate}`
+        );
 
         // Extract the info to populate a Firebot donation event.
         const eventDetails: TiltifyDonationEventData = new CampaignEvent(
@@ -285,15 +287,9 @@ Cause : ${eventDetails.campaignInfo.cause}`);
         const savedMilestones: TiltifyMilestone[] =
             await this.integrationController.loadMilestones(campaignId);
         const milestoneTriggered = { value: false };
-        savedMilestones.forEach(
-            milestone =>
-                this.processMilestone(
-                    campaignId,
-                    milestone,
-                    milestoneTriggered
-                ),
-            this
-        );
+        for (const milestone of savedMilestones) {
+            this.processMilestone(campaignId, milestone, milestoneTriggered);
+        }
         if (milestoneTriggered.value) {
             // if we triggered a milestone, we want to silently reload the milestones from tiltify.
             await this.loadMilestones(campaignId, false);
