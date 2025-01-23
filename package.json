@@ -23,7 +23,7 @@
         "axios": "^0.21.1",
         "eslint": "^8.56.0",
         "jest": "^29.7.0",
-        "node-json-db": "^1.4.1",
+        "node-json-db": "^2.3.0",
         "openapi": "^1.0.1",
         "openapi-typescript": "^7.5.2",
         "prettier": "^3.1.0",

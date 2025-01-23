@@ -11,7 +11,7 @@ import { TypedEmitter } from "tiny-typed-emitter";
 import { ReplaceVariable } from "@crowbartools/firebot-custom-scripts-types/types/modules/replace-variable-manager";
 import { EventFilter } from "@crowbartools/firebot-custom-scripts-types/types/modules/event-filter-manager";
 
-import { JsonDB } from "node-json-db";
+import { JsonDB, Config } from "node-json-db";
 import axios from "axios";
 
 import { tiltifyAPIService } from "@services/tiltifyAPI/tiltify-remote";
@@ -61,7 +61,7 @@ export class TiltifyIntegration
         this.timeout = null;
         this.connected = false;
         this.dbPath = path.join(SCRIPTS_DIR, "..", "db", "tiltify.db");
-        this.db = new JsonDB(this.dbPath, true, false, "/");
+        this.loadJsonDb();
         this.integrationId = integrationId;
         // Returns error "TS2459: Module '"node-json-db"' declares 'Config' locally, but it is not exported." not sure why
     }
@@ -327,6 +327,21 @@ export class TiltifyIntegration
         );
     }
 
+    loadJsonDb(): void {
+        logger.debug(`Loading Tiltify database at ${this.dbPath}`);
+        this.db = new JsonDB(new Config(this.dbPath, true, false, "/"));
+        // Merge Push an empty database to initialize the database if necessary
+        try {
+            this.db.push(`/`, { tiltify: {} }, false);
+        } catch {
+            logger.debug("Tiltify : Error while loading database. ");
+            logger.debug("Tiltify : Disconnecting Tiltify.");
+            this.emit("disconnected", this.integrationId);
+            this.connected = false;
+        }
+    }
+    // TODO: Generic loading/unloading database that recreates it.
+    // FIXME: If database file has "{}" or doesn't exist, all is ok. But if Database file is empty, we start throwing a bunch of exceptions.
     async loadMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
         let savedMilestones: TiltifyMilestone[];
         try {
