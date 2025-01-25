@@ -11,7 +11,6 @@ import { TypedEmitter } from "tiny-typed-emitter";
 import { ReplaceVariable } from "@crowbartools/firebot-custom-scripts-types/types/modules/replace-variable-manager";
 import { EventFilter } from "@crowbartools/firebot-custom-scripts-types/types/modules/event-filter-manager";
 
-import { JsonDB, Config } from "node-json-db";
 import axios from "axios";
 
 import { tiltifyAPIService } from "@services/tiltifyAPI/tiltify-remote";
@@ -33,7 +32,8 @@ import {
 import { tiltifyPollService } from "@services/pollService/tiltify-poll-service";
 import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
 
-const path = require("path");
+import * as path from "path";
+import { TiltifyDatabase } from "./database";
 
 export type TiltifySettings = {
     integrationSettings: {
@@ -53,17 +53,16 @@ export class TiltifyIntegration
 
     timeout: NodeJS.Timeout;
     connected = false;
-    private db: JsonDB;
-    private integrationId: string;
+    private db: TiltifyDatabase;
+    public integrationId: string;
 
     constructor(integrationId: string) {
         super();
         this.timeout = null;
         this.connected = false;
-        this.dbPath = path.join(SCRIPTS_DIR, "..", "db", "tiltify.db");
-        this.loadJsonDb();
         this.integrationId = integrationId;
-        // Returns error "TS2459: Module '"node-json-db"' declares 'Config' locally, but it is not exported." not sure why
+        this.dbPath = path.join(SCRIPTS_DIR, "..", "db", "tiltify.db");
+        this.db = new TiltifyDatabase(this.dbPath);
     }
 
     init(linked: boolean, integrationData: IntegrationData) {
@@ -327,35 +326,26 @@ export class TiltifyIntegration
         );
     }
 
-    loadJsonDb(): void {
-        logger.debug(`Loading Tiltify database at ${this.dbPath}`);
-        this.db = new JsonDB(new Config(this.dbPath, true, false, "/"));
-        // Merge Push an empty database to initialize the database if necessary
-        try {
-            this.db.push(`/`, { tiltify: {} }, false);
-        } catch {
-            logger.debug("Tiltify : Error while loading database. ");
-            logger.debug("Tiltify : Disconnecting Tiltify.");
-            this.emit("disconnected", this.integrationId);
-            this.connected = false;
-        }
-    }
-    // TODO: Generic loading/unloading database that recreates it.
-    // FIXME: If database file has "{}" or doesn't exist, all is ok. But if Database file is empty, we start throwing a bunch of exceptions.
     async loadMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
         let savedMilestones: TiltifyMilestone[];
         try {
-            savedMilestones = await this.db.getData(
+            savedMilestones = (await this.db.get(
                 `/tiltify/${campaignId}/milestones`
-            );
+            )) as TiltifyMilestone[];
         } catch {
+            logger.debug(
+                `Tiltify : No milestones saved for campaign ${campaignId}. Initializing database. `
+            );
+            this.db.set(`/tiltify/${campaignId}/milestones`, []);
+        }
+        if (!savedMilestones) {
             savedMilestones = [];
         }
         return savedMilestones;
     }
 
     saveMilestones(campaignId: string, milestones: TiltifyMilestone[]): void {
-        this.db.push(`/tiltify/${campaignId}/milestones`, milestones);
+        this.db.set(`/tiltify/${campaignId}/milestones`, milestones);
     }
 
     async loadDonations(
@@ -363,10 +353,10 @@ export class TiltifyIntegration
     ): Promise<{ lastDonationDate: string; ids: string[] }> {
         let lastDonationDate: string;
         try {
-            lastDonationDate = await this.db.getData(
+            lastDonationDate = (await this.db.get(
                 `/tiltify/${campaignId}/lastDonationDate`
-            );
-        } catch (e) {
+            )) as string;
+        } catch {
             logger.debug(
                 `Tiltify : Couldn't find the last donation date in campaign ${campaignId}. `
             );
@@ -374,14 +364,17 @@ export class TiltifyIntegration
         }
 
         // Loading the IDs of known donations for this campaign
-        let ids: string[] = [];
+        let ids: string[];
         try {
-            ids = await this.db.getData(`/tiltify/${campaignId}/ids`);
-        } catch (e) {
+            ids = (await this.db.get(`/tiltify/${campaignId}/ids`)) as string[];
+        } catch {
             logger.debug(
                 `Tiltify : No donations saved for campaign ${campaignId}. Initializing database. `
             );
-            this.db.push(`/tiltify/${campaignId}/ids`, []);
+            this.db.set(`/tiltify/${campaignId}/ids`, []);
+        }
+        if (!ids) {
+            ids = [];
         }
         return { lastDonationDate: lastDonationDate, ids: ids };
     }
@@ -390,8 +383,8 @@ export class TiltifyIntegration
         campaignId: string,
         { lastDonationDate, ids }: { lastDonationDate: string; ids: string[] }
     ): void {
-        this.db.push(`/tiltify/${campaignId}/ids`, ids);
-        this.db.push(
+        this.db.set(`/tiltify/${campaignId}/ids`, ids);
+        this.db.set(
             `/tiltify/${campaignId}/lastDonationDate`,
             lastDonationDate
         );
@@ -450,3 +443,17 @@ export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
         scopes: "public"
     }
 };
+
+let _integrationController: TiltifyIntegration = null;
+
+export function integrationController(
+    integrationId?: string
+): TiltifyIntegration {
+    if (!_integrationController) {
+        if (!integrationId) {
+            throw Error("Integration Id required upon first loading");
+        }
+        _integrationController = new TiltifyIntegration(integrationId);
+    }
+    return _integrationController;
+}
