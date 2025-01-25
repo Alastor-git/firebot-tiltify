@@ -29,8 +29,11 @@ export class TiltifyPollService extends AbstractPollService {
         super();
     }
 
-    static instance(): TiltifyPollService {
-        return this._instance || (this._instance = new this());
+    public static instance(): TiltifyPollService {
+        return (
+            TiltifyPollService._instance ||
+            (TiltifyPollService._instance = new TiltifyPollService())
+        );
     }
 
     protected async startPollActions(campaignId: string) {
@@ -339,3 +342,6 @@ Cause: ${eventDetails.campaignInfo.cause}`);
         }
     }
 }
+
+export const tiltifyPollService: typeof TiltifyPollService.instance =
+    TiltifyPollService.instance.bind(TiltifyPollService);

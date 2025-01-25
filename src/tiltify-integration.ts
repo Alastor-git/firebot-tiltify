@@ -69,11 +69,16 @@ export class TiltifyIntegration
         TiltifyIntegration._instance = this;
     }
 
-    static instance(integrationId?: string): TiltifyIntegration {
-        if (!this._instance && !integrationId) {
+    public static instance(integrationId?: string): TiltifyIntegration {
+        if (!TiltifyIntegration._instance && !integrationId) {
             throw Error("Integration Id required upon first instantiation");
         }
-        return this._instance || (this._instance = new this(integrationId));
+        return (
+            TiltifyIntegration._instance ||
+            (TiltifyIntegration._instance = new TiltifyIntegration(
+                integrationId
+            ))
+        );
     }
 
     init(linked: boolean, integrationData: IntegrationData) {
@@ -454,3 +459,6 @@ export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
         scopes: "public"
     }
 };
+
+export const tiltifyIntegration: typeof TiltifyIntegration.instance =
+    TiltifyIntegration.instance.bind(TiltifyIntegration);

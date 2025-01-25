@@ -67,8 +67,11 @@ export class TiltifyAPIController {
         this.client.use(authMiddleware);
     }
 
-    static instance(): TiltifyAPIController {
-        return this._instance || (this._instance = new this());
+    public static instance(): TiltifyAPIController {
+        return (
+            TiltifyAPIController._instance ||
+            (TiltifyAPIController._instance = new TiltifyAPIController())
+        );
     }
 
     async validateToken(): Promise<boolean> {
@@ -234,3 +237,6 @@ export class TiltifyAPIController {
         return milestonesData;
     }
 }
+
+export const tiltifyAPIController: typeof TiltifyAPIController.instance =
+    TiltifyAPIController.instance.bind(TiltifyAPIController);
