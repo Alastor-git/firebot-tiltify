@@ -12,14 +12,16 @@ import { ReplaceVariable } from "@crowbartools/firebot-custom-scripts-types/type
 import { EventFilter } from "@crowbartools/firebot-custom-scripts-types/types/modules/event-filter-manager";
 
 import axios from "axios";
+import * as path from "path";
 
-import { TiltifyAPIController } from "@services/tiltifyAPI/tiltify-remote";
 import { TiltifyMilestone } from "./types/milestone";
-
 import { TiltifyEventSource } from "./events/tiltify-event-source";
 
 import * as Variables from "./variables";
 import * as EventFilters from "./filters";
+
+import { tiltifyAPIController, tiltifyPollService } from "./services";
+import { TiltifyDatabase } from "@shared/database";
 
 import {
     logger,
@@ -29,11 +31,7 @@ import {
     eventFilterManager,
     frontendCommunicator
 } from "@shared/firebot-modules";
-import { TiltifyPollService } from "@services/pollService/tiltify-poll-service";
 import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
-
-import * as path from "path";
-import { TiltifyDatabase } from "./database";
 
 export type TiltifySettings = {
     integrationSettings: {
@@ -109,7 +107,7 @@ export class TiltifyIntegration
             const campaignId =
                 integration.userSettings.campaignSettings.campaignId;
 
-            return await TiltifyAPIController.instance().getRewards(campaignId);
+            return await tiltifyAPIController().getRewards(campaignId);
         });
 
         frontendCommunicator.onAsync("get-tiltify-poll-options", async () => {
@@ -126,9 +124,7 @@ export class TiltifyIntegration
             const campaignId =
                 integration.userSettings.campaignSettings.campaignId;
 
-            return await TiltifyAPIController.instance().getPollOptions(
-                campaignId
-            );
+            return await tiltifyAPIController().getPollOptions(campaignId);
         });
 
         frontendCommunicator.onAsync("get-tiltify-challenges", async () => {
@@ -145,7 +141,7 @@ export class TiltifyIntegration
             const campaignId =
                 integration.userSettings.campaignSettings.campaignId;
 
-            return await TiltifyAPIController.instance().getTargets(campaignId);
+            return await tiltifyAPIController().getTargets(campaignId);
         });
 
         integrationManager.on("token-refreshed", ({ integrationId }) => {
@@ -183,7 +179,7 @@ export class TiltifyIntegration
             token = authData.auth;
         }
         // Check whether the token is still valid.
-        if ((await TiltifyAPIController.instance().validateToken()) === true) {
+        if ((await tiltifyAPIController().validateToken()) === true) {
             return true;
         }
         // Token wasn't valid, attempt to refresh it
@@ -243,10 +239,10 @@ export class TiltifyIntegration
             (userSettings.integrationSettings.pollInterval as number) * 1000;
 
         // This is the loop that updates. We register it now, but it's gonna update asynchronously
-        await TiltifyPollService.instance().start(campaignId, pollInterval);
+        await tiltifyPollService().start(campaignId, pollInterval);
 
         // Check if we failed starting the polling service
-        if (!TiltifyPollService.instance().isStarted(campaignId)) {
+        if (!tiltifyPollService().isStarted(campaignId)) {
             logger.debug("Tiltify : Failed to start the polling. ");
             logger.debug("Tiltify : Disconnecting Tiltify.");
             this.emit("disconnected", this.integrationId);

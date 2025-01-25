@@ -1,7 +1,7 @@
 import { JsonDB, Config } from "node-json-db";
 import { logger } from "@shared/firebot-modules";
-import { TiltifyIntegration } from "@/tiltify-integration";
-import * as fs from "fs";
+import { tiltifyIntegration } from "@/services";
+import { unlink } from "fs/promises";
 
 export class TiltifyDatabase {
     private db: JsonDB;
@@ -21,14 +21,7 @@ export class TiltifyDatabase {
                 logger.warn(
                     "Tiltify : Tiltify database corrupted. Attempting to reset it"
                 );
-                fs.unlink(path, (err: Error) => {
-                    if (err) {
-                        logger.debug(
-                            `Tiltify: Error when removing database file.`
-                        );
-                        throw Error("Database removal failed");
-                    }
-                });
+                await unlink(path);
                 await this.db.push(`/`, { tiltify: {} }, false);
             } catch {
                 logger.warn("Tiltify : Tiltify database could not be reset. ");
@@ -44,11 +37,11 @@ export class TiltifyDatabase {
                 `Tiltify : Database not loaded. ${path} could not be retrieved. `
             );
             logger.debug("Tiltify : Disconnecting Tiltify.");
-            TiltifyIntegration.instance().emit(
+            tiltifyIntegration().emit(
                 "disconnected",
-                TiltifyIntegration.instance().integrationId
+                tiltifyIntegration().integrationId
             );
-            TiltifyIntegration.instance().connected = false;
+            tiltifyIntegration().connected = false;
             return;
         }
         return await this.db.getData(path);
@@ -60,11 +53,11 @@ export class TiltifyDatabase {
                 `Tiltify : Database not loaded. ${path} could not be saved. `
             );
             logger.debug("Tiltify : Disconnecting Tiltify.");
-            TiltifyIntegration.instance().emit(
+            tiltifyIntegration().emit(
                 "disconnected",
-                TiltifyIntegration.instance().integrationId
+                tiltifyIntegration().integrationId
             );
-            TiltifyIntegration.instance().connected = false;
+            tiltifyIntegration().connected = false;
             return;
         }
         this.db.push(path, object);

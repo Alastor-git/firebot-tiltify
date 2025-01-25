@@ -8,6 +8,7 @@ import {
     TiltifySettings,
     integrationDefinition
 } from "./tiltify-integration";
+import { tiltifyIntegration } from "./services";
 
 import {
     logger,
@@ -36,7 +37,7 @@ const script: Firebot.CustomScript = {
         // Create and Register the integration
         const integrationConfig: Integration<TiltifySettings> = {
             definition: integrationDefinition,
-            integration: TiltifyIntegration.instance(integrationDefinition.id)
+            integration: tiltifyIntegration(integrationDefinition.id)
         };
         integrationManager.registerIntegration(integrationConfig);
     },

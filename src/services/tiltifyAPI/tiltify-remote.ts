@@ -11,9 +11,9 @@ import { TiltifyPoll } from "@/types/poll";
 import { TiltifyMilestone } from "@/types/milestone";
 
 import { logger } from "@shared/firebot-modules";
-import { TiltifyIntegration } from "@/tiltify-integration";
 import { AuthDetails } from "@crowbartools/firebot-custom-scripts-types";
 import { TiltifyTarget } from "@/types/target";
+import { tiltifyIntegration } from "@/services";
 
 export class TiltifyAPIController {
     // eslint-disable-next-line no-use-before-define
@@ -46,7 +46,7 @@ export class TiltifyAPIController {
             async onRequest({ request }) {
                 // fetch token, if it doesn’t exist
                 const authRes: AuthDetails =
-                    await TiltifyIntegration.instance().getAuth();
+                    await tiltifyIntegration().getAuth();
                 if (!authRes) {
                     throw Error(
                         "No valid Auth token available to make the request"
