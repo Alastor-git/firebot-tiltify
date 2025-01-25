@@ -10,14 +10,15 @@ import { TiltifyDonation } from "@/types/donation";
 import { TiltifyPoll } from "@/types/poll";
 import { TiltifyMilestone } from "@/types/milestone";
 
-import { integrationManager, logger } from "@shared/firebot-modules";
-import { TiltifyIntegration, TiltifySettings } from "@/tiltify-integration";
+import { logger } from "@shared/firebot-modules";
+import { TiltifyIntegration } from "@/tiltify-integration";
 import { AuthDetails } from "@crowbartools/firebot-custom-scripts-types";
 import { TiltifyTarget } from "@/types/target";
 
 export class TiltifyAPIController {
+    // eslint-disable-next-line no-use-before-define
+    private static _instance: TiltifyAPIController;
     private client: Client<paths, `${string}/${string}`>;
-    private integrationController: TiltifyIntegration;
     private errorManagementMiddleware: Middleware = {
         async onResponse({ response }) {
             if (response.ok) {
@@ -40,18 +41,12 @@ export class TiltifyAPIController {
         }
     };
 
-    constructor() {
+    private constructor() {
         const authMiddleware: Middleware = {
             async onRequest({ request }) {
                 // fetch token, if it doesn’t exist
-                if (!this.integrationController) {
-                    this.integrationController =
-                        integrationManager.getIntegrationById<TiltifySettings>(
-                            "tiltify"
-                        ).integration as TiltifyIntegration;
-                }
                 const authRes: AuthDetails =
-                    await this.integrationController.getAuth();
+                    await TiltifyIntegration.instance().getAuth();
                 if (!authRes) {
                     throw Error(
                         "No valid Auth token available to make the request"
@@ -70,6 +65,10 @@ export class TiltifyAPIController {
         });
         this.client.use(this.errorManagementMiddleware);
         this.client.use(authMiddleware);
+    }
+
+    static instance(): TiltifyAPIController {
+        return this._instance || (this._instance = new this());
     }
 
     async validateToken(): Promise<boolean> {
@@ -235,5 +234,3 @@ export class TiltifyAPIController {
         return milestonesData;
     }
 }
-
-export const tiltifyAPIService = new TiltifyAPIController();

@@ -1,13 +1,9 @@
 import { AbstractPollService } from "./poll-service";
-import {
-    logger,
-    integrationManager,
-    eventManager
-} from "@shared/firebot-modules";
+import { logger, eventManager } from "@shared/firebot-modules";
 
 import { TiltifyCampaignData } from "@/types/campaign-data";
 import { TiltifyMilestone } from "@/types/milestone";
-import { tiltifyAPIService } from "@services/tiltifyAPI/tiltify-remote";
+import { TiltifyAPIController } from "@services/tiltifyAPI/tiltify-remote";
 import { TiltifyCampaignReward } from "@/types/campaign-reward";
 import {
     TILTIFY_DONATION_EVENT_ID,
@@ -15,7 +11,7 @@ import {
     TILTIFY_MILESTONE_EVENT_ID
 } from "@/constants";
 
-import { TiltifyIntegration, TiltifySettings } from "@/tiltify-integration";
+import { TiltifyIntegration } from "@/tiltify-integration";
 
 import "@/events/donation-event-data"; // Solves module augmentation is not loaded
 import { TiltifyDonationEventData } from "@/events/donation-event-data";
@@ -24,21 +20,22 @@ import { TiltifyMilestoneReachedEventData } from "@/events/milestone-reached-eve
 import { TiltifyDonation } from "@/types/donation";
 import { CampaignEvent } from "@/events/campaign-event-data";
 
-class TiltifyPollService extends AbstractPollService {
-    private integrationController: TiltifyIntegration;
+export class TiltifyPollService extends AbstractPollService {
+    // eslint-disable-next-line no-use-before-define
+    private static _instance: TiltifyPollService;
     declare protected pollerData: { [campaignId: string]: TiltifyCampaignData };
     declare protected pollerStarted: { [campaignId: string]: boolean };
 
+    private constructor() {
+        super();
+    }
+
+    static instance(): TiltifyPollService {
+        return this._instance || (this._instance = new this());
+    }
+
     protected async startPollActions(campaignId: string) {
         // TODO: Include here the actions you need to do only once before the poll starts
-
-        // Load the integrationcontroller if it hasen't been
-        if (!this.integrationController) {
-            this.integrationController =
-                integrationManager.getIntegrationById<TiltifySettings>(
-                    "tiltify"
-                ).integration as TiltifyIntegration;
-        }
 
         // Initiate the poller's data
         this.pollerData[campaignId] = {
@@ -93,7 +90,7 @@ class TiltifyPollService extends AbstractPollService {
 
         // Load the campaign data
         this.pollerData[campaignId].campaign =
-            await tiltifyAPIService.getCampaign(campaignId);
+            await TiltifyAPIController.instance().getCampaign(campaignId);
 
         // Check that the campaign data is valid
         const causeId = this.pollerData[campaignId].campaign?.cause_id;
@@ -107,9 +104,10 @@ class TiltifyPollService extends AbstractPollService {
         // Populate info about the cause the campaign is collecting for. This should not change
 
         // Collect data about the cause
-        this.pollerData[campaignId].cause = await tiltifyAPIService.getCause(
-            this.pollerData[campaignId].campaign.cause_id
-        );
+        this.pollerData[campaignId].cause =
+            await TiltifyAPIController.instance().getCause(
+                this.pollerData[campaignId].campaign.cause_id
+            );
     }
 
     async loadMilestones(campaignId: string, verbose = true) {
@@ -117,11 +115,11 @@ class TiltifyPollService extends AbstractPollService {
         // This is gonna update to reflect the activation and possible new Milestones.
 
         this.pollerData[campaignId].milestones =
-            await tiltifyAPIService.getMilestones(campaignId);
+            await TiltifyAPIController.instance().getMilestones(campaignId);
         // Load saved milestones if any
         // They are saved to keep memory of which milestones have previously been reached so we know what events to trigger
         const savedMilestones: TiltifyMilestone[] =
-            await this.integrationController.loadMilestones(campaignId);
+            await TiltifyIntegration.instance().loadMilestones(campaignId);
 
         this.pollerData[campaignId].milestones.forEach(
             (milestone: TiltifyMilestone) => {
@@ -153,7 +151,7 @@ class TiltifyPollService extends AbstractPollService {
             this
         );
         // Save the loaded milestones
-        this.integrationController.saveMilestones(
+        TiltifyIntegration.instance().saveMilestones(
             campaignId,
             this.pollerData[campaignId].milestones
         );
@@ -180,7 +178,7 @@ Reached: ${mi.reached}`
         // This is gonna update to reflect the quantities available and offered and possible new rewards.
 
         this.pollerData[campaignId].rewards =
-            await tiltifyAPIService.getRewards(campaignId);
+            await TiltifyAPIController.instance().getRewards(campaignId);
         if (verbose) {
             logger.debug(
                 "Tiltify: Campaign Rewards: ",
@@ -199,18 +197,18 @@ Active: ${re.active}`
 
     async updateDonations(campaignId: string) {
         // Get the saved access token
-        const authData = await this.integrationController.getAuth();
+        const authData = await TiltifyIntegration.instance().getAuth();
         const token = authData?.access_token;
 
         // Load the last donation date if available
         const { lastDonationDate, ids } =
-            await this.integrationController.loadDonations(campaignId);
+            await TiltifyIntegration.instance().loadDonations(campaignId);
         this.pollerData[campaignId].lastDonationDate = lastDonationDate;
         this.pollerData[campaignId].donationIds = ids;
 
         // Acquire the donations since the last saved from Tiltify and sort them by date.
         const donations: TiltifyDonation[] =
-            await tiltifyAPIService.getCampaignDonations(
+            await TiltifyAPIController.instance().getCampaignDonations(
                 token,
                 campaignId,
                 this.pollerData[campaignId].lastDonationDate
@@ -228,7 +226,7 @@ Active: ${re.active}`
             lastDonationDate: this.pollerData[campaignId].lastDonationDate,
             ids: this.pollerData[campaignId].donationIds
         };
-        this.integrationController.saveDonations(campaignId, donationData);
+        TiltifyIntegration.instance().saveDonations(campaignId, donationData);
     }
 
     async processDonation(campaignId: string, donation: TiltifyDonation) {
@@ -239,7 +237,7 @@ Active: ${re.active}`
 
         // A donation has happened. Reload campaign info to update collected amounts
         this.pollerData[campaignId].campaign =
-            await tiltifyAPIService.getCampaign(campaignId);
+            await TiltifyAPIController.instance().getCampaign(campaignId);
         // If we don't know the reward, reload rewards and retry.
         let matchingreward: TiltifyCampaignReward = this.pollerData[
             campaignId
@@ -285,7 +283,7 @@ Cause : ${eventDetails.campaignInfo.cause}`);
 
     async updateMilestones(campaignId: string) {
         const savedMilestones: TiltifyMilestone[] =
-            await this.integrationController.loadMilestones(campaignId);
+            await TiltifyIntegration.instance().loadMilestones(campaignId);
         const milestoneTriggered = { value: false };
         for (const milestone of savedMilestones) {
             this.processMilestone(campaignId, milestone, milestoneTriggered);
@@ -296,7 +294,7 @@ Cause : ${eventDetails.campaignInfo.cause}`);
         } else {
             this.pollerData[campaignId].milestones = savedMilestones;
             // Save the milestones
-            this.integrationController.saveMilestones(
+            TiltifyIntegration.instance().saveMilestones(
                 campaignId,
                 this.pollerData[campaignId].milestones
             );
@@ -342,5 +340,3 @@ Cause: ${eventDetails.campaignInfo.cause}`);
         }
     }
 }
-
-export const tiltifyPollService = new TiltifyPollService();
