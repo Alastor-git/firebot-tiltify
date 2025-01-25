@@ -49,6 +49,7 @@ type TiltifyIntegrationEvents = IntegrationEvents;
 export class TiltifyIntegration
     extends TypedEmitter<TiltifyIntegrationEvents>
     implements IntegrationController<TiltifySettings, TiltifyIntegrationEvents> {
+    private static _instance: TiltifyIntegration;
     readonly dbPath: string;
 
     timeout: NodeJS.Timeout;
@@ -58,11 +59,22 @@ export class TiltifyIntegration
 
     constructor(integrationId: string) {
         super();
+        if (TiltifyIntegration._instance) {
+            return TiltifyIntegration._instance;
+        }
         this.timeout = null;
         this.connected = false;
         this.integrationId = integrationId;
         this.dbPath = path.join(SCRIPTS_DIR, "..", "db", "tiltify.db");
         this.db = new TiltifyDatabase(this.dbPath);
+        TiltifyIntegration._instance = this;
+    }
+
+    static instance(integrationId?: string): TiltifyIntegration {
+        if (!this._instance && !integrationId) {
+            throw Error("Integration Id required upon first instantiation");
+        }
+        return this._instance || (this._instance = new this(integrationId));
     }
 
     init(linked: boolean, integrationData: IntegrationData) {
@@ -443,17 +455,3 @@ export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
         scopes: "public"
     }
 };
-
-let _integrationController: TiltifyIntegration = null;
-
-export function integrationController(
-    integrationId?: string
-): TiltifyIntegration {
-    if (!_integrationController) {
-        if (!integrationId) {
-            throw Error("Integration Id required upon first loading");
-        }
-        _integrationController = new TiltifyIntegration(integrationId);
-    }
-    return _integrationController;
-}

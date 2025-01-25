@@ -1,6 +1,6 @@
 import { JsonDB, Config } from "node-json-db";
 import { logger } from "@shared/firebot-modules";
-import { integrationController } from "@/tiltify-integration";
+import { TiltifyIntegration } from "@/tiltify-integration";
 import * as fs from "fs";
 
 export class TiltifyDatabase {
@@ -44,11 +44,11 @@ export class TiltifyDatabase {
                 `Tiltify : Database not loaded. ${path} could not be retrieved. `
             );
             logger.debug("Tiltify : Disconnecting Tiltify.");
-            integrationController().emit(
+            TiltifyIntegration.instance().emit(
                 "disconnected",
-                integrationController().integrationId
+                TiltifyIntegration.instance().integrationId
             );
-            integrationController().connected = false;
+            TiltifyIntegration.instance().connected = false;
             return;
         }
         return await this.db.getData(path);
@@ -60,11 +60,11 @@ export class TiltifyDatabase {
                 `Tiltify : Database not loaded. ${path} could not be saved. `
             );
             logger.debug("Tiltify : Disconnecting Tiltify.");
-            integrationController().emit(
+            TiltifyIntegration.instance().emit(
                 "disconnected",
-                integrationController().integrationId
+                TiltifyIntegration.instance().integrationId
             );
-            integrationController().connected = false;
+            TiltifyIntegration.instance().connected = false;
             return;
         }
         this.db.push(path, object);

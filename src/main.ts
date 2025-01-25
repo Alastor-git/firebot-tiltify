@@ -4,8 +4,8 @@ import {
 } from "@crowbartools/firebot-custom-scripts-types";
 
 import {
+    TiltifyIntegration,
     TiltifySettings,
-    integrationController,
     integrationDefinition
 } from "./tiltify-integration";
 
@@ -36,7 +36,7 @@ const script: Firebot.CustomScript = {
         // Create and Register the integration
         const integrationConfig: Integration<TiltifySettings> = {
             definition: integrationDefinition,
-            integration: integrationController(integrationDefinition.id)
+            integration: TiltifyIntegration.instance(integrationDefinition.id)
         };
         integrationManager.registerIntegration(integrationConfig);
     },
