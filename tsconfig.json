@@ -5,6 +5,7 @@
         "module": "CommonJS",
         "allowSyntheticDefaultImports": true,
         "noImplicitAny": true,
+        "strictNullChecks": true,
         "sourceMap": true,
         "moduleResolution": "node",
         "experimentalDecorators": true,

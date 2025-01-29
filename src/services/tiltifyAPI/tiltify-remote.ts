@@ -45,7 +45,7 @@ export class TiltifyAPIController {
         const authMiddleware: Middleware = {
             async onRequest({ request }) {
                 // fetch token, if it doesn’t exist
-                const authRes: AuthDetails =
+                const authRes: AuthDetails | null =
                     await tiltifyIntegration().getAuth();
                 if (!authRes) {
                     throw Error(
@@ -80,7 +80,7 @@ export class TiltifyAPIController {
             data // only present if 2XX response
             // eslint-disable-next-line new-cap
         } = await this.client.GET("/api/public/current-user");
-        if (!response.ok) {
+        if (!response.ok || !data?.data) {
             logger.warn(
                 `Tiltify: Tiltify token couldn't be validated or was invalid`
             );
@@ -102,8 +102,8 @@ export class TiltifyAPIController {
         } = await this.client.GET("/api/public/campaigns/{campaign_id}", {
             params: { path: { campaign_id: campaignId } } // eslint-disable-line camelcase
         });
-        if (!response.ok) {
-            return;
+        if (!response.ok || !data?.data) {
+            throw Error(`Campaign ${campaignId} data couldn't be retrieved`);
         }
 
         const campaignData: components["schemas"]["Campaign"] = data.data;
@@ -113,7 +113,7 @@ export class TiltifyAPIController {
     async getCampaignDonations(
         token: string,
         campaignId: string,
-        completedAfter: string = null
+        completedAfter: string | null = null
     ): Promise<TiltifyDonation[]> {
         const {
             response,
@@ -130,8 +130,10 @@ export class TiltifyAPIController {
                 }
             }
         );
-        if (!response.ok) {
-            return;
+        if (!response.ok || !data?.data) {
+            throw Error(
+                `Donations for campaign ${campaignId} couldn't be retrieved`
+            );
         }
 
         const donationsData: components["schemas"]["Donation"][] = data.data;
@@ -148,8 +150,8 @@ export class TiltifyAPIController {
                 path: { cause_id: causeId } // eslint-disable-line camelcase
             }
         });
-        if (!response.ok) {
-            return;
+        if (!response.ok || !data?.data) {
+            throw Error(`Cause ${causeId} data couldn't be retrieved`);
         }
 
         const causeData: components["schemas"]["Cause"] = data.data;
@@ -169,8 +171,10 @@ export class TiltifyAPIController {
                 }
             }
         );
-        if (!response.ok) {
-            return;
+        if (!response.ok || !data?.data) {
+            throw Error(
+                `Rewards for campaign ${campaignId} couldn't be retrieved`
+            );
         }
 
         const rewardsData: components["schemas"]["Reward"][] = data.data;
@@ -187,8 +191,10 @@ export class TiltifyAPIController {
                 path: { campaign_id: campaignId } // eslint-disable-line camelcase
             }
         });
-        if (!response.ok) {
-            return;
+        if (!response.ok || !data?.data) {
+            throw Error(
+                `Polls for campaign ${campaignId} couldn't be retrieved`
+            );
         }
 
         const pollsData: components["schemas"]["Poll"][] = data.data;
@@ -208,8 +214,10 @@ export class TiltifyAPIController {
                 }
             }
         );
-        if (!response.ok) {
-            return;
+        if (!response.ok || !data?.data) {
+            throw Error(
+                `Targets for campaign ${campaignId} couldn't be retrieved`
+            );
         }
 
         const targetsData: components["schemas"]["Target"][] = data.data;
@@ -229,8 +237,10 @@ export class TiltifyAPIController {
                 }
             }
         );
-        if (!response.ok) {
-            return;
+        if (!response.ok || !data?.data) {
+            throw Error(
+                `Milestones for campaign ${campaignId} couldn't be retrieved`
+            );
         }
 
         const milestonesData: components["schemas"]["Milestone"][] = data.data;

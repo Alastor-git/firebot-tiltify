@@ -28,8 +28,7 @@ import {
     integrationManager,
     variableManager,
     eventManager,
-    eventFilterManager,
-    frontendCommunicator
+    eventFilterManager
 } from "@shared/firebot-modules";
 import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
 
@@ -51,7 +50,6 @@ export class TiltifyIntegration
     private static _instance: TiltifyIntegration;
     readonly dbPath: string;
 
-    timeout: NodeJS.Timeout;
     connected = false;
     private db: TiltifyDatabase;
     public integrationId: string;
@@ -61,7 +59,6 @@ export class TiltifyIntegration
         if (TiltifyIntegration._instance) {
             return TiltifyIntegration._instance;
         }
-        this.timeout = null;
         this.connected = false;
         this.integrationId = integrationId;
         this.dbPath = path.join(SCRIPTS_DIR, "..", "db", "tiltify.db");
@@ -70,18 +67,18 @@ export class TiltifyIntegration
     }
 
     public static instance(integrationId?: string): TiltifyIntegration {
-        if (!TiltifyIntegration._instance && !integrationId) {
+        if (!integrationId) {
             throw Error("Integration Id required upon first instantiation");
-        }
-        return (
-            TiltifyIntegration._instance ||
-            (TiltifyIntegration._instance = new TiltifyIntegration(
+        } else if (!TiltifyIntegration._instance) {
+            TiltifyIntegration._instance = new TiltifyIntegration(
                 integrationId
-            ))
-        );
+            );
+        }
+        return TiltifyIntegration._instance;
     }
 
-    init(linked: boolean, integrationData: IntegrationData) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    init(_linked: boolean, _integrationData: IntegrationData) {
         logger.info(`Initializing Tiltify integration...`);
         // Register all events
         eventManager.registerEventSource(TiltifyEventSource);
@@ -98,57 +95,6 @@ export class TiltifyIntegration
             eventFilterManager.registerFilter(filter);
         }
 
-        frontendCommunicator.onAsync("get-tiltify-rewards", async () => {
-            if (!TiltifyIntegration.isIntegrationConfigValid()) {
-                throw new Error(
-                    "Tiltify integration not found or not configured"
-                );
-            }
-
-            const integration =
-                integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                    this.integrationId
-                );
-            const campaignId =
-                integration.userSettings.campaignSettings.campaignId;
-
-            return await tiltifyAPIController().getRewards(campaignId);
-        });
-
-        frontendCommunicator.onAsync("get-tiltify-poll-options", async () => {
-            if (!TiltifyIntegration.isIntegrationConfigValid()) {
-                throw new Error(
-                    "Tiltify integration not found or not configured"
-                );
-            }
-
-            const integration =
-                integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                    this.integrationId
-                );
-            const campaignId =
-                integration.userSettings.campaignSettings.campaignId;
-
-            return await tiltifyAPIController().getPollOptions(campaignId);
-        });
-
-        frontendCommunicator.onAsync("get-tiltify-challenges", async () => {
-            if (!TiltifyIntegration.isIntegrationConfigValid()) {
-                throw new Error(
-                    "Tiltify integration not found or not configured"
-                );
-            }
-
-            const integration =
-                integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                    "tiltify"
-                );
-            const campaignId =
-                integration.userSettings.campaignSettings.campaignId;
-
-            return await tiltifyAPIController().getTargets(campaignId);
-        });
-
         integrationManager.on("token-refreshed", ({ integrationId }) => {
             if (integrationId === this.integrationId) {
                 logger.debug("Tiltify token refreshed");
@@ -158,7 +104,8 @@ export class TiltifyIntegration
         logger.info("Tiltify integration loaded");
     }
 
-    link(linkData: LinkData) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    link(_linkData: LinkData) {
         // Link is when we have received the token for the first time.
         // Once Linked, we're allowed to connect
         logger.info("Tiltify integration linked.");
@@ -196,14 +143,15 @@ export class TiltifyIntegration
             logger.debug("Tiltify : Refreshing token failed. ");
             return false;
         }
+        return true;
     }
 
-    async getAuth(): Promise<AuthDetails> {
+    async getAuth(): Promise<AuthDetails | null> {
         const authData: LinkData = await integrationManager.getAuth(
             this.integrationId
         );
         if (authData === null || "auth" in authData === false) {
-            return;
+            return null;
         }
         return authData.auth;
     }
@@ -268,10 +216,6 @@ export class TiltifyIntegration
             integrationManager.getIntegrationDefinitionById<TiltifySettings>(
                 "tiltify"
             );
-        // Clear the event processing loop
-        if (this.timeout) {
-            clearInterval(this.timeout);
-        }
         // Disconnect
         this.connected = false;
         this.emit("disconnected", integrationDefinition.id);
@@ -288,7 +232,7 @@ export class TiltifyIntegration
     }
 
     // Doing this here because of a bug in Firebot where it isn't refreshing automatically
-    async refreshToken(integrationId: string): Promise<string> {
+    async refreshToken(integrationId: string): Promise<string | null> {
         // Checks if the IntegrationManager has a refreshToken Method and uses it if true.
         if (typeof integrationManager.refreshToken === "function") {
             const authData = await integrationManager.refreshToken("tiltify");
@@ -301,7 +245,7 @@ export class TiltifyIntegration
                     integrationId
                 );
             if (integrationDefinition.linkType !== "auth") {
-                return;
+                return null;
             }
             const auth = integrationDefinition.auth;
             const authProvider = integrationDefinition.authProviderDetails;
@@ -325,7 +269,7 @@ export class TiltifyIntegration
             logger.debug(error);
         }
 
-        return;
+        return null;
     }
 
     static isIntegrationConfigValid(): boolean {
@@ -343,7 +287,7 @@ export class TiltifyIntegration
     }
 
     async loadMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
-        let savedMilestones: TiltifyMilestone[];
+        let savedMilestones: TiltifyMilestone[] | undefined;
         try {
             savedMilestones = (await this.db.get(
                 `/tiltify/${campaignId}/milestones`
@@ -376,11 +320,11 @@ export class TiltifyIntegration
             logger.debug(
                 `Tiltify : Couldn't find the last donation date in campaign ${campaignId}. `
             );
-            lastDonationDate = null;
+            lastDonationDate = "";
         }
 
         // Loading the IDs of known donations for this campaign
-        let ids: string[];
+        let ids: string[] | undefined;
         try {
             ids = (await this.db.get(`/tiltify/${campaignId}/ids`)) as string[];
         } catch {

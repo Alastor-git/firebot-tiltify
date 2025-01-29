@@ -1,7 +1,12 @@
 import { AbstractPollService } from "./poll-service";
 import { logger, eventManager } from "@shared/firebot-modules";
 
-import { TiltifyCampaignData } from "@/types/campaign-data";
+import {
+    PopulatingTiltifyCampaignData,
+    TiltifyCampaignDataStep1,
+    TiltifyCampaignDataStep2,
+    TiltifyCampaignDataStep3
+} from "@/types/campaign-data";
 import { TiltifyMilestone } from "@/types/milestone";
 import { TiltifyCampaignReward } from "@/types/campaign-reward";
 import {
@@ -18,11 +23,15 @@ import "@/events/milestone-reached-event-data"; // Solves module augmentation is
 import { TiltifyMilestoneReachedEventData } from "@/events/milestone-reached-event-data";
 import { TiltifyDonation } from "@/types/donation";
 import { CampaignEvent } from "@/events/campaign-event-data";
+import { TiltifyCampaign } from "@/types/campaign";
+import { TiltifyCause } from "@/types/cause";
 
 export class TiltifyPollService extends AbstractPollService {
     // eslint-disable-next-line no-use-before-define
     private static _instance: TiltifyPollService;
-    declare protected pollerData: { [campaignId: string]: TiltifyCampaignData };
+    declare protected pollerData: {
+        [campaignId: string]: PopulatingTiltifyCampaignData;
+    };
     declare protected pollerStarted: { [campaignId: string]: boolean };
 
     private constructor() {
@@ -41,29 +50,35 @@ export class TiltifyPollService extends AbstractPollService {
 
         // Initiate the poller's data
         this.pollerData[campaignId] = {
+            Step: "Step 1",
             campaignId: campaignId,
-            cause: null,
-            campaign: null,
+            cause: undefined,
+            campaign: undefined,
             milestones: [],
             rewards: [],
-            lastDonationDate: null,
+            lastDonationDate: "",
             donationIds: []
         };
         // Populate the poller's data
 
         // Load info about the campaign.
         // If impossible, disconnect the campaign
-        const campaignLoaded = await this.loadCampaign(campaignId);
-        if (!campaignLoaded) {
-            logger.debug(
-                `Tiltify : information about campaign ${campaignId} couldn't be retrieved or are invalid. `
+        try {
+            this.pollerData[campaignId] = await this.loadCampaign(
+                this.pollerData[campaignId]
             );
-            logger.debug("Tiltify : Disconnecting Tiltify.");
+        } catch {
+            logger.debug(
+                `Tiltify : Information about campaign ${campaignId} couldn't be retrieved or are invalid. `
+            );
+            logger.debug(`Tiltify : Stopped polling ${campaignId}.`);
             this.pollerStarted[campaignId] = false;
             return;
         }
 
-        await this.loadCause(campaignId);
+        this.pollerData[campaignId] = await this.loadCause(
+            this.pollerData[campaignId]
+        );
         await this.loadRewards(campaignId);
         await this.loadMilestones(campaignId);
     }
@@ -86,30 +101,34 @@ export class TiltifyPollService extends AbstractPollService {
         // TODO : Include here the actions you need to do only once after the poll ends
     }
 
-    async loadCampaign(campaignId: string): Promise<boolean> {
+    async loadCampaign(
+        campaignData: TiltifyCampaignDataStep1
+    ): Promise<TiltifyCampaignDataStep2> {
         // Populate information about the campaign. This is mandatory to have. If not, we have a problem.
         // This contains the money raised, so it will update
 
         // Load the campaign data
-        this.pollerData[campaignId].campaign =
-            await tiltifyAPIController().getCampaign(campaignId);
+        const campaign: TiltifyCampaign =
+            await tiltifyAPIController().getCampaign(campaignData.campaignId);
 
         // Check that the campaign data is valid
-        const causeId = this.pollerData[campaignId].campaign?.cause_id;
-        if (causeId == null || causeId === "") {
-            return false;
+        const causeId = campaign.cause_id;
+        if (causeId === "") {
+            throw Error("Campaign data invalid. ");
         }
-        return true;
+        return { ...campaignData, campaign: campaign, Step: "Step 2" };
     }
 
-    async loadCause(campaignId: string) {
+    async loadCause(
+        campaignData: TiltifyCampaignDataStep2
+    ): Promise<TiltifyCampaignDataStep3> {
         // Populate info about the cause the campaign is collecting for. This should not change
 
         // Collect data about the cause
-        this.pollerData[campaignId].cause =
-            await tiltifyAPIController().getCause(
-                this.pollerData[campaignId].campaign.cause_id
-            );
+        const cause: TiltifyCause = await tiltifyAPIController().getCause(
+            campaignData.campaign.cause_id
+        );
+        return { ...campaignData, cause: cause, Step: "Step 3" };
     }
 
     async loadMilestones(campaignId: string, verbose = true) {
@@ -130,11 +149,12 @@ export class TiltifyPollService extends AbstractPollService {
                     Number(
                         this.pollerData[campaignId].campaign?.amount_raised
                             ?.value ?? 0
-                    ) >= Number(milestone.amount.value);
+                    ) >= Number(milestone.amount?.value);
                 // Checked the saved value for the milestone
-                const savedMilestone: TiltifyMilestone = savedMilestones.find(
-                    (mi: TiltifyMilestone) => mi.id === milestone.id
-                );
+                const savedMilestone: TiltifyMilestone | null =
+                    savedMilestones.find(
+                        (mi: TiltifyMilestone) => mi.id === milestone.id
+                    ) ?? null;
                 // If the milestone was unknown
                 if (!savedMilestone) {
                     // Set reached as false so the event triggers
@@ -166,7 +186,7 @@ export class TiltifyPollService extends AbstractPollService {
                         mi => `
 ID: ${mi.id}
 Name: ${mi.name}
-Amount: $${mi.amount.value}
+Amount: $${mi.amount?.value}
 Active: ${mi.active}
 Reached: ${mi.reached}`
                     )
@@ -189,7 +209,7 @@ Reached: ${mi.reached}`
                         re => `
 ID: ${re.id}
 Name: ${re.name}
-Amount: $${re.amount.value}
+Amount: $${re.amount?.value}
 Active: ${re.active}`
                     )
                     .join("\n")
@@ -198,10 +218,6 @@ Active: ${re.active}`
     }
 
     async updateDonations(campaignId: string) {
-        // Get the saved access token
-        const authData = await tiltifyIntegration().getAuth();
-        const token = authData?.access_token;
-
         // Load the last donation date if available
         const { lastDonationDate, ids } =
             await tiltifyIntegration().loadDonations(campaignId);
@@ -211,12 +227,13 @@ Active: ${re.active}`
         // Acquire the donations since the last saved from Tiltify and sort them by date.
         const donations: TiltifyDonation[] =
             await tiltifyAPIController().getCampaignDonations(
-                token,
                 campaignId,
                 this.pollerData[campaignId].lastDonationDate
             );
         const sortedDonations = donations.sort(
-            (a, b) => Date.parse(a.completed_at) - Date.parse(b.completed_at)
+            (a, b) =>
+                Date.parse(a.completed_at ?? "") -
+                Date.parse(b.completed_at ?? "")
         );
 
         // Process each donation
@@ -241,7 +258,7 @@ Active: ${re.active}`
         this.pollerData[campaignId].campaign =
             await tiltifyAPIController().getCampaign(campaignId);
         // If we don't know the reward, reload rewards and retry.
-        let matchingreward: TiltifyCampaignReward = this.pollerData[
+        let matchingreward: TiltifyCampaignReward | undefined = this.pollerData[
             campaignId
         ].rewards.find(ri => ri.id === donation.reward_id);
         if (!matchingreward) {
@@ -253,7 +270,8 @@ Active: ${re.active}`
         // FIXME : Rewards contain info about quantity remaining. We should update that when a donation comes in claiming a reward.
 
         // Update the last donation date to the current one.
-        this.pollerData[campaignId].lastDonationDate = donation.completed_at;
+        this.pollerData[campaignId].lastDonationDate =
+            donation.completed_at ?? "";
         logger.debug(
             `Tiltify: Last processed donation at : ${this.pollerData[campaignId].lastDonationDate}`
         );
@@ -313,7 +331,7 @@ Cause : ${eventDetails.campaignInfo.cause}`);
             !milestone.reached &&
             Number(
                 this.pollerData[campaignId].campaign?.amount_raised?.value ?? 0
-            ) >= Number(milestone.amount.value)
+            ) >= Number(milestone.amount?.value)
         ) {
             milestone.reached = true;
             milestoneTriggered.value = true;

@@ -5,7 +5,7 @@ export type TiltifyCampaignReward = {
     name: string;
     amount: TiltifyMoney;
     active: boolean;
-    description: string;
-    quantity: number;
-    quantity_remaining: number;
+    description: string | null;
+    quantity: number | null;
+    quantity_remaining: number | null;
 };

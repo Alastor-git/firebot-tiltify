@@ -4,7 +4,7 @@ import { tiltifyIntegration } from "@/services";
 import { unlink } from "fs/promises";
 
 export class TiltifyDatabase {
-    private db: JsonDB;
+    private db: JsonDB | null = null;
 
     constructor(path: string) {
         this.load(path);

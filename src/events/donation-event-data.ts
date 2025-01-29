@@ -24,13 +24,13 @@ export class DonationEvent {
     );
     constructor(
         donationData: TiltifyDonation,
-        matchingRewardData: TiltifyCampaignReward,
+        matchingRewardData: TiltifyCampaignReward | undefined,
         campaignData: TiltifyCampaign,
         causeData?: TiltifyCause
     );
     constructor(
         donationData: TiltifyDonation,
-        matchingRewardData: TiltifyCampaignReward,
+        matchingRewardData: TiltifyCampaignReward | undefined,
         campaignData: CampaignEvent
     );
     constructor(
@@ -66,14 +66,14 @@ declare module "./campaign-event-data" {
     interface CampaignEvent {
         createDonationEvent(
             donation: TiltifyDonation,
-            matchingReward: TiltifyCampaignReward
+            matchingReward: TiltifyCampaignReward | undefined
         ): DonationEvent;
     }
 }
 
 CampaignEvent.prototype.createDonationEvent = function (
     donation: TiltifyDonation,
-    matchingReward: TiltifyCampaignReward = null
+    matchingReward: TiltifyCampaignReward | undefined = undefined
 ): DonationEvent {
-    return new DonationEvent(donation, matchingReward, this);
+    return new DonationEvent(donation, matchingReward, this as CampaignEvent);
 };
