@@ -113,7 +113,6 @@ export class TiltifyAPIController {
     }
 
     async getCampaignDonations(
-        token: string,
         campaignId: string,
         completedAfter: string | null = null
     ): Promise<TiltifyDonation[]> {
