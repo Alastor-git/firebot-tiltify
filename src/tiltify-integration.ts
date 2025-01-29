@@ -3,8 +3,7 @@ import {
     IntegrationController,
     IntegrationData,
     IntegrationDefinition,
-    LinkData,
-    AuthDetails
+    LinkData
 } from "@crowbartools/firebot-custom-scripts-types";
 import { TypedEmitter } from "tiny-typed-emitter";
 
@@ -20,7 +19,7 @@ import { TiltifyEventSource } from "./events/tiltify-event-source";
 import * as Variables from "./variables";
 import * as EventFilters from "./filters";
 
-import { tiltifyAPIController, tiltifyPollService } from "./services";
+import { tiltifyPollService } from "./services";
 import { TiltifyDatabase } from "@shared/database";
 
 import {
@@ -31,6 +30,7 @@ import {
     eventFilterManager
 } from "@shared/firebot-modules";
 import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
+import { TiltifyAuthManager } from "./auth-manager";
 
 export type TiltifySettings = {
     integrationSettings: {
@@ -45,7 +45,8 @@ type TiltifyIntegrationEvents = IntegrationEvents;
 
 export class TiltifyIntegration
     extends TypedEmitter<TiltifyIntegrationEvents>
-    implements IntegrationController<TiltifySettings, TiltifyIntegrationEvents> {
+    implements IntegrationController<TiltifySettings, TiltifyIntegrationEvents>
+{
     // eslint-disable-next-line no-use-before-define
     private static _instance: TiltifyIntegration;
     readonly dbPath: string;
@@ -67,9 +68,9 @@ export class TiltifyIntegration
     }
 
     public static instance(integrationId?: string): TiltifyIntegration {
-        if (!integrationId) {
+        if (!(TiltifyIntegration._instance || integrationId)) {
             throw Error("Integration Id required upon first instantiation");
-        } else if (!TiltifyIntegration._instance) {
+        } else if (integrationId) {
             TiltifyIntegration._instance = new TiltifyIntegration(
                 integrationId
             );
@@ -115,50 +116,9 @@ export class TiltifyIntegration
         logger.info("Tiltify integration unlinked.");
     }
 
-    async isTokenValid(): Promise<boolean> {
-        // Get the saved access token
-        const authData = await integrationManager.getAuth(this.integrationId);
-        let token: AuthDetails;
-        if (authData === null) {
-            logger.debug("Tiltify : Couldn't retrieve a valid token. ");
-            logger.debug("Tiltify : Attempting to refresh token. ");
-            token = await integrationManager.refreshToken(this.integrationId);
-        } else {
-            if ("auth" in authData === false) {
-                logger.warn("Tiltify : Invalid authentication data. ");
-                return false;
-            }
-            token = authData.auth;
-        }
-        // Check whether the token is still valid.
-        if ((await tiltifyAPIController().validateToken()) === true) {
-            return true;
-        }
-        // Token wasn't valid, attempt to refresh it
-        logger.debug("Tiltify : Token invalid. ");
-        logger.debug("Tiltify : Attempting to refresh token. ");
-        token = await integrationManager.refreshToken(this.integrationId);
-        // The refreshing fails.
-        if (token === null) {
-            logger.debug("Tiltify : Refreshing token failed. ");
-            return false;
-        }
-        return true;
-    }
-
-    async getAuth(): Promise<AuthDetails | null> {
-        const authData: LinkData = await integrationManager.getAuth(
-            this.integrationId
-        );
-        if (authData === null || "auth" in authData === false) {
-            return null;
-        }
-        return authData.auth;
-    }
-
     async connect(integrationData: IntegrationData) {
         // disconnect if we don't have a good auth token
-        if (!this.isTokenValid()) {
+        if (!TiltifyAuthManager.isTokenValid()) {
             logger.debug("Tiltify : Disconnecting Tiltify.");
             this.emit("disconnected", this.integrationId);
             this.connected = false;
