@@ -12,7 +12,7 @@ import {
 } from "@shared/firebot-modules";
 import { tiltifyIntegration } from "./services";
 
-const packageInfo = require("../package.json");
+import packageInfo from "../package.json";
 
 const script: Firebot.CustomScript = {
     getScriptManifest: () => {

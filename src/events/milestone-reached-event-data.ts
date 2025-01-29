@@ -8,7 +8,7 @@ export type TiltifyMilestoneReachedEventData = TiltifyCampaignEventData & {
     name: string;
     amount: number;
 };
-
+// TODO: Goal reached event !!
 export class MilestoneReachedEvent {
     data: TiltifyMilestoneReachedEventData;
 

@@ -8,6 +8,7 @@
         "strictNullChecks": true,
         "sourceMap": true,
         "moduleResolution": "node",
+        "resolveJsonModule": true,
         "experimentalDecorators": true,
         "downlevelIteration": true,
         "skipLibCheck": false,
