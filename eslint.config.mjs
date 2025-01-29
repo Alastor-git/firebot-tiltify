@@ -3,7 +3,8 @@ import typescriptEslint from "@typescript-eslint/eslint-plugin";
 import globals from "globals";
 import tsParser from "@typescript-eslint/parser";
 import js from "@eslint/js";
-import { plugin as ex } from "eslint-plugin-exception-handling";
+//import { plugin as ex } from "eslint-plugin-exception-handling";
+import pluginPromise from "eslint-plugin-promise";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -21,10 +22,13 @@ export default tseslint.config(
     // Indicated by a wrench @ https://eslint.org/docs/rules/
     js.configs.recommended,
     tseslint.configs.recommended,
+    pluginPromise.configs["flat/recommended"],
     {
         plugins: {
             "@typescript-eslint": typescriptEslint,
-            ex: ex
+            // @ts-ignore
+            promise: pluginPromise
+            //ex: ex
         },
 
         languageOptions: {
@@ -127,14 +131,14 @@ export default tseslint.config(
             "@typescript-eslint/no-var-requires": "off",
             "@typescript-eslint/no-empty-function": "off",
             "@typescript-eslint/no-this-alias": "off",
-            "@typescript-eslint/ban-ts-comment": "off",
+            "@typescript-eslint/ban-ts-comment": "off"
             //"@typescript-eslint/indent": ["warn", 4],
             //"@typescript-eslint/ban-types": "warn",
 
             // eslint-plugin-exception-handling
-            "ex/no-unhandled": "error",
-            "ex/might-throw": "warn",
-            "ex/use-error-cause": "warn"
+            //"ex/no-unhandled": "error",
+            //"ex/might-throw": "warn",
+            //"ex/use-error-cause": "warn"
         }
     }
 );
