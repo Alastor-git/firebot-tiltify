@@ -45,7 +45,7 @@ export class TiltifyPollService extends AbstractPollService {
         );
     }
 
-    protected async startPollActions(campaignId: string) {
+    protected async startPollActions(campaignId: string): Promise<void> {
         // TODO: Include here the actions you need to do only once before the poll starts
 
         // Initiate the poller's data
@@ -61,43 +61,50 @@ export class TiltifyPollService extends AbstractPollService {
         };
         // Populate the poller's data
 
-        // Load info about the campaign.
         // If impossible, disconnect the campaign
         try {
+            // Load info about the campaign.
             this.pollerData[campaignId] = await this.loadCampaign(
                 this.pollerData[campaignId]
             );
-        } catch {
-            logger.debug(
-                `Tiltify : Information about campaign ${campaignId} couldn't be retrieved or are invalid. `
+            // Load info about the cause.
+            this.pollerData[campaignId] = await this.loadCause(
+                this.pollerData[campaignId]
             );
-            logger.debug(`Tiltify : Stopped polling ${campaignId}.`);
+            // Load info about the rewards.
+            await this.loadRewards(campaignId);
+            // Load info about the Milestones.
+            await this.loadMilestones(campaignId);
+        } catch (error) {
+            logger.debug(
+                `Tiltify : Stopped polling ${campaignId} because of an error.`
+            );
+            logger.debug(error);
             this.pollerStarted[campaignId] = false;
-            return;
         }
-
-        this.pollerData[campaignId] = await this.loadCause(
-            this.pollerData[campaignId]
-        );
-        await this.loadRewards(campaignId);
-        await this.loadMilestones(campaignId);
     }
 
-    protected async poll(campaignId: string) {
+    protected async poll(campaignId: string): Promise<void> {
         // TODO : Poll here the data from Tiltify
 
-        // FIXME: If connexion fails, we should stop the poller
-        // FIXME: Error handling. What happens if token dies or Promise otherwise rejected ?
         // FIXME: Auto reconnecting if disconnected ? How does Firebot handle this ?
 
-        // Check for new donations
-        await this.updateDonations(campaignId);
+        try {
+            // Check for new donations
+            await this.updateDonations(campaignId);
 
-        // Check for milestones reached
-        await this.updateMilestones(campaignId);
+            // Check for milestones reached
+            await this.updateMilestones(campaignId);
+        } catch (error) {
+            logger.debug(
+                `Tiltify : Stopped polling ${campaignId} because of an error.`
+            );
+            logger.debug(error);
+            this.pollerStarted[campaignId] = false;
+        }
     }
 
-    protected stopPollActions(campaignId: string) {
+    protected stopPollActions(campaignId: string): void {
         // TODO : Include here the actions you need to do only once after the poll ends
     }
 
@@ -108,35 +115,55 @@ export class TiltifyPollService extends AbstractPollService {
         // This contains the money raised, so it will update
 
         // Load the campaign data
-        const campaign: TiltifyCampaign =
-            await tiltifyAPIController().getCampaign(campaignData.campaignId);
-
-        // Check that the campaign data is valid
-        const causeId = campaign.cause_id;
-        if (causeId === "") {
-            throw Error("Campaign data invalid. ");
+        try {
+            const campaign: TiltifyCampaign =
+                await tiltifyAPIController().getCampaign(
+                    campaignData.campaignId
+                );
+            // Check that the campaign data is valid
+            const causeId = campaign.cause_id;
+            if (causeId === "") {
+                throw new Error("Campaign data invalid. ");
+            }
+            return { ...campaignData, campaign: campaign, Step: "Step 2" };
+        } catch (error) {
+            logger.warn(
+                `Tiltify : Information about campaign ${campaignData.campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
+            );
+            throw new Error("Campaign not loaded", { cause: error });
         }
-        return { ...campaignData, campaign: campaign, Step: "Step 2" };
     }
 
     async loadCause(
         campaignData: TiltifyCampaignDataStep2
     ): Promise<TiltifyCampaignDataStep3> {
         // Populate info about the cause the campaign is collecting for. This should not change
-
-        // Collect data about the cause
-        const cause: TiltifyCause = await tiltifyAPIController().getCause(
-            campaignData.campaign.cause_id
-        );
-        return { ...campaignData, cause: cause, Step: "Step 3" };
+        try {
+            // Collect data about the cause
+            const cause: TiltifyCause = await tiltifyAPIController().getCause(
+                campaignData.campaign.cause_id
+            );
+            return { ...campaignData, cause: cause, Step: "Step 3" };
+        } catch (error) {
+            logger.warn(
+                `Tiltify : Information about cause ${campaignData.campaign.cause_id} couldn't be retrieved or are invalid. Message: ${error.message}`
+            );
+            throw new Error("Cause not loaded", { cause: error });
+        }
     }
 
-    async loadMilestones(campaignId: string, verbose = true) {
+    async loadMilestones(campaignId: string, verbose = true): Promise<void> {
         // Populate info about the Milestones.
         // This is gonna update to reflect the activation and possible new Milestones.
-
-        this.pollerData[campaignId].milestones =
-            await tiltifyAPIController().getMilestones(campaignId);
+        try {
+            this.pollerData[campaignId].milestones =
+                await tiltifyAPIController().getMilestones(campaignId);
+        } catch (error) {
+            logger.warn(
+                `Tiltify : Information about Milestones for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
+            );
+            throw new Error("Milestones not loaded", { cause: error });
+        }
         // Load saved milestones if any
         // They are saved to keep memory of which milestones have previously been reached so we know what events to trigger
         const savedMilestones: TiltifyMilestone[] =
@@ -195,12 +222,19 @@ Reached: ${mi.reached}`
         }
     }
 
-    async loadRewards(campaignId: string, verbose = true) {
+    async loadRewards(campaignId: string, verbose = true): Promise<void> {
         // Populate info about the rewards offered.
         // This is gonna update to reflect the quantities available and offered and possible new rewards.
 
-        this.pollerData[campaignId].rewards =
-            await tiltifyAPIController().getRewards(campaignId);
+        try {
+            this.pollerData[campaignId].rewards =
+                await tiltifyAPIController().getRewards(campaignId);
+        } catch (error) {
+            logger.warn(
+                `Tiltify : Information about Rewards for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
+            );
+            throw new Error("Rewards not loaded", { cause: error });
+        }
         if (verbose) {
             logger.debug(
                 "Tiltify: Campaign Rewards: ",
@@ -217,19 +251,25 @@ Active: ${re.active}`
         }
     }
 
-    async updateDonations(campaignId: string) {
+    async updateDonations(campaignId: string): Promise<void> {
         // Load the last donation date if available
         const { lastDonationDate, ids } =
             await tiltifyIntegration().loadDonations(campaignId);
         this.pollerData[campaignId].lastDonationDate = lastDonationDate;
         this.pollerData[campaignId].donationIds = ids;
 
-        // Acquire the donations since the last saved from Tiltify and sort them by date.
-        const donations: TiltifyDonation[] =
-            await tiltifyAPIController().getCampaignDonations(
+        let donations: TiltifyDonation[];
+        try {
+            // Acquire the donations since the last saved from Tiltify and sort them by date.
+            donations = await tiltifyAPIController().getCampaignDonations(
                 campaignId,
                 this.pollerData[campaignId].lastDonationDate
             );
+        } catch (error) {
+            throw new Error("Tiltify: API error while updating donations. ", {
+                cause: error
+            });
+        }
         const sortedDonations = donations.sort(
             (a, b) =>
                 Date.parse(a.completed_at ?? "") -
@@ -248,15 +288,25 @@ Active: ${re.active}`
         tiltifyIntegration().saveDonations(campaignId, donationData);
     }
 
-    async processDonation(campaignId: string, donation: TiltifyDonation) {
+    async processDonation(
+        campaignId: string,
+        donation: TiltifyDonation
+    ): Promise<void> {
         // Don't process it if we already have registered it.
         if (this.pollerData[campaignId].donationIds.includes(donation.id)) {
             return;
         }
 
-        // A donation has happened. Reload campaign info to update collected amounts
-        this.pollerData[campaignId].campaign =
-            await tiltifyAPIController().getCampaign(campaignId);
+        try {
+            // A donation has happened. Reload campaign info to update collected amounts
+            // FIXME: Campaign should only be reloaded once if there are new donations rather than once per donation
+            this.pollerData[campaignId].campaign =
+                await tiltifyAPIController().getCampaign(campaignId);
+        } catch (error) {
+            throw new Error("Tiltify: API error while updating campaign data", {
+                cause: error
+            });
+        }
         // If we don't know the reward, reload rewards and retry.
         let matchingreward: TiltifyCampaignReward | undefined = this.pollerData[
             campaignId
@@ -301,7 +351,7 @@ Cause : ${eventDetails.campaignInfo.cause}`);
         this.pollerData[campaignId].donationIds.push(donation.id);
     }
 
-    async updateMilestones(campaignId: string) {
+    async updateMilestones(campaignId: string): Promise<void> {
         const savedMilestones: TiltifyMilestone[] =
             await tiltifyIntegration().loadMilestones(campaignId);
         const milestoneTriggered = { value: false };
@@ -325,7 +375,7 @@ Cause : ${eventDetails.campaignInfo.cause}`);
         campaignId: string,
         milestone: TiltifyMilestone,
         milestoneTriggered: { value: boolean }
-    ) {
+    ): void {
         // Check if milestone has been reached
         if (
             !milestone.reached &&

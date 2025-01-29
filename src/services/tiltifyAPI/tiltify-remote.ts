@@ -48,8 +48,8 @@ export class TiltifyAPIController {
                 const authRes: AuthDetails | null =
                     await tiltifyIntegration().getAuth();
                 if (!authRes) {
-                    throw Error(
-                        "No valid Auth token available to make the request"
+                    throw new Error(
+                        "No valid Auth token available to make the API request"
                     );
                 }
                 const accessToken = authRes.access_token;
@@ -103,7 +103,9 @@ export class TiltifyAPIController {
             params: { path: { campaign_id: campaignId } } // eslint-disable-line camelcase
         });
         if (!response.ok || !data?.data) {
-            throw Error(`Campaign ${campaignId} data couldn't be retrieved`);
+            throw new Error(
+                `Campaign ${campaignId} data couldn't be retrieved`
+            );
         }
 
         const campaignData: components["schemas"]["Campaign"] = data.data;
@@ -131,7 +133,7 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data?.data) {
-            throw Error(
+            throw new Error(
                 `Donations for campaign ${campaignId} couldn't be retrieved`
             );
         }
@@ -151,7 +153,7 @@ export class TiltifyAPIController {
             }
         });
         if (!response.ok || !data?.data) {
-            throw Error(`Cause ${causeId} data couldn't be retrieved`);
+            throw new Error(`Cause ${causeId} data couldn't be retrieved`);
         }
 
         const causeData: components["schemas"]["Cause"] = data.data;
@@ -172,7 +174,7 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data?.data) {
-            throw Error(
+            throw new Error(
                 `Rewards for campaign ${campaignId} couldn't be retrieved`
             );
         }
@@ -192,7 +194,7 @@ export class TiltifyAPIController {
             }
         });
         if (!response.ok || !data?.data) {
-            throw Error(
+            throw new Error(
                 `Polls for campaign ${campaignId} couldn't be retrieved`
             );
         }
@@ -215,7 +217,7 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data?.data) {
-            throw Error(
+            throw new Error(
                 `Targets for campaign ${campaignId} couldn't be retrieved`
             );
         }
@@ -238,7 +240,7 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data?.data) {
-            throw Error(
+            throw new Error(
                 `Milestones for campaign ${campaignId} couldn't be retrieved`
             );
         }
