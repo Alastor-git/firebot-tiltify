@@ -3,14 +3,14 @@ import {
     IntegrationController,
     IntegrationData,
     IntegrationDefinition,
-    LinkData
+    LinkData,
+    AuthDetails
 } from "@crowbartools/firebot-custom-scripts-types";
 import { TypedEmitter } from "tiny-typed-emitter";
 
 import { ReplaceVariable } from "@crowbartools/firebot-custom-scripts-types/types/modules/replace-variable-manager";
 import { EventFilter } from "@crowbartools/firebot-custom-scripts-types/types/modules/event-filter-manager";
 
-import axios from "axios";
 import * as path from "path";
 
 import { TiltifyMilestone } from "./types/milestone";
@@ -32,6 +32,12 @@ import {
 import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
 import { TiltifyAuthManager } from "./auth-manager";
 
+/**
+ * Description placeholder
+ *
+ * @export
+ * @typedef {TiltifySettings}
+ */
 export type TiltifySettings = {
     integrationSettings: {
         pollInterval: number;
@@ -41,20 +47,78 @@ export type TiltifySettings = {
     };
 };
 
-type TiltifyIntegrationEvents = IntegrationEvents;
+/**
+ * Description placeholder
+ *
+ * @export
+ * @typedef {TiltifyIntegrationEvents}
+ */
+export type TiltifyIntegrationEvents = IntegrationEvents & {
+    "token-refreshed": (data: {integrationId: string, updatedToken: AuthDetails}) => void;
+};
 
+/**
+ * Description placeholder
+ *
+ * @export
+ * @class TiltifyIntegration
+ * @typedef {TiltifyIntegration}
+ * @extends {TypedEmitter<TiltifyIntegrationEvents>}
+ * @implements {IntegrationController<TiltifySettings, TiltifyIntegrationEvents>}
+ */
 export class TiltifyIntegration
     extends TypedEmitter<TiltifyIntegrationEvents>
     implements IntegrationController<TiltifySettings, TiltifyIntegrationEvents>
 {
-    // eslint-disable-next-line no-use-before-define
-    private static _instance: TiltifyIntegration;
-    readonly dbPath: string;
+    /**
+     * Description placeholder
+     *
+     * @private
+     * @static
+     * @type {TiltifyIntegration}
+     */
+    private static _instance: TiltifyIntegration; // eslint-disable-line no-use-before-define
 
-    connected = false;
+    /**
+     * Description placeholder
+     *
+     * @private
+     * @readonly
+     * @type {string}
+     */
+    private readonly dbPath: string;
+
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @type {boolean}
+     */
+    public connected: boolean = false;
+
+    /**
+     * Description placeholder
+     *
+     * @private
+     * @type {TiltifyDatabase}
+     */
     private db: TiltifyDatabase;
+
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @type {string}
+     */
     public integrationId: string;
 
+    /**
+     * Creates an instance of TiltifyIntegration.
+     *
+     * @constructor
+     * @private
+     * @param {string} integrationId
+     */
     private constructor(integrationId: string) {
         super();
         if (TiltifyIntegration._instance) {
@@ -63,10 +127,17 @@ export class TiltifyIntegration
         this.connected = false;
         this.integrationId = integrationId;
         this.dbPath = path.join(SCRIPTS_DIR, "..", "db", "tiltify.db");
-        this.db = new TiltifyDatabase(this.dbPath);
-        TiltifyIntegration._instance = this;
     }
 
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @static
+     * @param {?string} [integrationId]
+     * @returns {TiltifyIntegration}
+     * @throws {Error} if missing Id upon first instantiation
+     */
     public static instance(integrationId?: string): TiltifyIntegration {
         if (!(TiltifyIntegration._instance || integrationId)) {
             throw Error("Integration Id required upon first instantiation");
@@ -78,8 +149,15 @@ export class TiltifyIntegration
         return TiltifyIntegration._instance;
     }
 
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @param {boolean} _linked
+     * @param {IntegrationData} _integrationData
+     */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    init(_linked: boolean, _integrationData: IntegrationData) {
+    public init(_linked: boolean, _integrationData: IntegrationData): void {
         logger.info(`Initializing Tiltify integration...`);
         // Register all events
         eventManager.registerEventSource(TiltifyEventSource);
@@ -105,23 +183,50 @@ export class TiltifyIntegration
         logger.info("Tiltify integration loaded");
     }
 
+
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @param {LinkData} _linkData
+     */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    link(_linkData: LinkData) {
+    public link(_linkData: LinkData): void {
         // Link is when we have received the token for the first time.
         // Once Linked, we're allowed to connect
         logger.info("Tiltify integration linked.");
     }
 
-    unlink() {
+    /**
+     * Description placeholder
+     * 
+     * @public
+     */
+    public unlink(): void {
         logger.info("Tiltify integration unlinked.");
     }
 
-    async connect(integrationData: IntegrationData) {
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @async
+     * @param {IntegrationData} integrationData
+     * @returns {Promise<void>}
+     */
+    public async connect(integrationData: IntegrationData): Promise<void> {
+        // Connect to the database
+        try {
+            this.db = new TiltifyDatabase(this.dbPath);
+        } catch (error) {
+            logger.warn(error);
+            this.disconnect();
+            return;
+        }
+
         // disconnect if we don't have a good auth token
         if (!TiltifyAuthManager.isTokenValid()) {
-            logger.debug("Tiltify : Disconnecting Tiltify.");
-            this.emit("disconnected", this.integrationId);
-            this.connected = false;
+            this.disconnect();
             return;
         }
 
@@ -131,9 +236,7 @@ export class TiltifyIntegration
             integrationData.userSettings.campaignSettings == null
         ) {
             logger.debug("Tiltify : Integration settings invalid. ");
-            logger.debug("Tiltify : Disconnecting Tiltify.");
-            this.emit("disconnected", this.integrationId);
-            this.connected = false;
+            this.disconnect();
             return;
         }
 
@@ -143,9 +246,7 @@ export class TiltifyIntegration
             .campaignId as string;
         if (campaignId == null || campaignId === "") {
             logger.debug("Tiltify : No campaign Id. ");
-            logger.debug("Tiltify : Disconnecting Tiltify.");
-            this.emit("disconnected", this.integrationId);
-            this.connected = false;
+            this.disconnect();
             return;
         }
         const pollInterval: number =
@@ -157,9 +258,7 @@ export class TiltifyIntegration
         // Check if we failed starting the polling service
         if (!tiltifyPollService().isStarted(campaignId)) {
             logger.debug("Tiltify : Failed to start the polling. ");
-            logger.debug("Tiltify : Disconnecting Tiltify.");
-            this.emit("disconnected", this.integrationId);
-            this.connected = false;
+            this.disconnect();
             return;
         }
 
@@ -170,19 +269,30 @@ export class TiltifyIntegration
         this.connected = true;
     }
 
-    // Disconnect the Integration
-    disconnect() {
+    /**
+     * Disconnect the Integration
+     *
+     * @public
+     */
+    public disconnect(): void {
         const integrationDefinition =
             integrationManager.getIntegrationDefinitionById<TiltifySettings>(
                 "tiltify"
             );
         // Disconnect
         this.connected = false;
+        // TODO: stop polling and other services ? 
+        logger.debug("Tiltify : Disconnecting Tiltify.");
         this.emit("disconnected", integrationDefinition.id);
     }
 
-    // Update the user settings
-    onUserSettingsUpdate(integrationData: IntegrationData) {
+    /**
+     * Update the user settings
+     *
+     * @public
+     * @param {IntegrationData} integrationData
+     */
+    public onUserSettingsUpdate(integrationData: IntegrationData): void {
         // If we're connected, disconnect
         if (this.connected) {
             this.disconnect();
@@ -191,48 +301,14 @@ export class TiltifyIntegration
         this.connect(integrationData);
     }
 
-    // Doing this here because of a bug in Firebot where it isn't refreshing automatically
-    async refreshToken(integrationId: string): Promise<string | null> {
-        // Checks if the IntegrationManager has a refreshToken Method and uses it if true.
-        if (typeof integrationManager.refreshToken === "function") {
-            const authData = await integrationManager.refreshToken("tiltify");
-            return authData.access_token;
-        }
-        // If not, we have to implement it ourselves
-        try {
-            const integrationDefinition =
-                integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                    integrationId
-                );
-            if (integrationDefinition.linkType !== "auth") {
-                return null;
-            }
-            const auth = integrationDefinition.auth;
-            const authProvider = integrationDefinition.authProviderDetails;
-
-            if (auth != null) {
-                const url = `${authProvider.auth.tokenHost}${authProvider.auth.tokenPath}?client_id=${authProvider.client.id}&client_secret=${authProvider.client.secret}&grant_type=refresh_token&refresh_token=${auth.refresh_token}&scope=${authProvider.scopes}`;
-                const response = await axios.post(url);
-
-                if (response.status === 200) {
-                    const int =
-                        integrationManager.getIntegrationById<TiltifySettings>(
-                            integrationId
-                        );
-                    integrationManager.saveIntegrationAuth(int, response.data);
-
-                    return response.data.access_token;
-                }
-            }
-        } catch (error) {
-            logger.error("Unable to refresh Tiltify token");
-            logger.debug(error);
-        }
-
-        return null;
-    }
-
-    static isIntegrationConfigValid(): boolean {
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @static
+     * @returns {boolean}
+     */
+    public static isIntegrationConfigValid(): boolean {
         const integrationDefinition =
             integrationManager.getIntegrationDefinitionById<TiltifySettings>(
                 "tiltify"
@@ -246,7 +322,15 @@ export class TiltifyIntegration
         );
     }
 
-    async loadMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<TiltifyMilestone[]>}
+     */
+    public async loadMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
         let savedMilestones: TiltifyMilestone[] | undefined;
         try {
             savedMilestones = (await this.db.get(
@@ -256,7 +340,13 @@ export class TiltifyIntegration
             logger.debug(
                 `Tiltify : No milestones saved for campaign ${campaignId}. Initializing database. `
             );
-            this.db.set(`/tiltify/${campaignId}/milestones`, []);
+            try {
+                this.db.set(`/tiltify/${campaignId}/milestones`, []);
+            } catch (error) {
+                logger.warn(error);
+                this.disconnect();
+                savedMilestones = [];
+            }
         }
         if (!savedMilestones) {
             savedMilestones = [];
@@ -264,11 +354,31 @@ export class TiltifyIntegration
         return savedMilestones;
     }
 
-    saveMilestones(campaignId: string, milestones: TiltifyMilestone[]): void {
-        this.db.set(`/tiltify/${campaignId}/milestones`, milestones);
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @param {string} campaignId
+     * @param {TiltifyMilestone[]} milestones
+     */
+    public saveMilestones(campaignId: string, milestones: TiltifyMilestone[]): void {
+        try {
+            this.db.set(`/tiltify/${campaignId}/milestones`, milestones);
+        } catch (error) {
+            logger.warn(error);
+            this.disconnect();
+        }
     }
 
-    async loadDonations(
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<{ lastDonationDate: string; ids: string[] }>}
+     */
+    public async loadDonations(
         campaignId: string
     ): Promise<{ lastDonationDate: string; ids: string[] }> {
         let lastDonationDate: string;
@@ -291,7 +401,12 @@ export class TiltifyIntegration
             logger.debug(
                 `Tiltify : No donations saved for campaign ${campaignId}. Initializing database. `
             );
-            this.db.set(`/tiltify/${campaignId}/ids`, []);
+            try {
+                this.db.set(`/tiltify/${campaignId}/ids`, []);
+            } catch (error) {
+                logger.warn(error);
+                this.disconnect();
+            }
         }
         if (!ids) {
             ids = [];
@@ -299,18 +414,37 @@ export class TiltifyIntegration
         return { lastDonationDate: lastDonationDate, ids: ids };
     }
 
-    saveDonations(
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @param {string} campaignId
+     * @param {{ lastDonationDate: string; ids: string[] }} param0
+     * @param {string} param0.lastDonationDate
+     * @param {{}} param0.ids
+     */
+    public saveDonations(
         campaignId: string,
         { lastDonationDate, ids }: { lastDonationDate: string; ids: string[] }
     ): void {
-        this.db.set(`/tiltify/${campaignId}/ids`, ids);
-        this.db.set(
-            `/tiltify/${campaignId}/lastDonationDate`,
-            lastDonationDate
-        );
+        try {
+            this.db.set(`/tiltify/${campaignId}/ids`, ids);
+            this.db.set(
+                `/tiltify/${campaignId}/lastDonationDate`,
+                lastDonationDate
+            );
+        } catch (error) {
+            logger.warn(error);
+            this.disconnect();
+        }
     }
 }
 
+/**
+ * Description placeholder
+ *
+ * @type {IntegrationDefinition<TiltifySettings>}
+ */
 export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
     id: "tiltify",
     name: "Tiltify",
@@ -349,8 +483,10 @@ export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
         name: "Tiltify",
         redirectUriHost: "localhost",
         client: {
-            id: "55ee54fe15f8ee41fac947b1123ba4ea134b31de112b947c5f1afcffec471337",
-            secret: "b3fa00a003b5b1197d26ccc181d43801dd854906883b7279a386368a44f36293"
+            id: // hidestream
+            "55ee54fe15f8ee41fac947b1123ba4ea134b31de112b947c5f1afcffec471337",
+            secret: // hidestream
+            "b3fa00a003b5b1197d26ccc181d43801dd854906883b7279a386368a44f36293"
         },
         auth: {
             // @ts-ignore
@@ -364,5 +500,10 @@ export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
     }
 };
 
+/**
+ * Description placeholder
+ *
+ * @type {typeof TiltifyIntegration.instance}
+ */
 export const tiltifyIntegration: typeof TiltifyIntegration.instance =
     TiltifyIntegration.instance.bind(TiltifyIntegration);

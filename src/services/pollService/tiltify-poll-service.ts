@@ -26,18 +26,61 @@ import { CampaignEvent } from "@/events/campaign-event-data";
 import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
 
+/**
+ * Description placeholder
+ *
+ * @export
+ * @class TiltifyPollService
+ * @typedef {TiltifyPollService}
+ * @extends {AbstractPollService}
+ */
 export class TiltifyPollService extends AbstractPollService {
-    // eslint-disable-next-line no-use-before-define
-    private static _instance: TiltifyPollService;
+    /**
+     * Description placeholder
+     *
+     * @private
+     * @static
+     * @type {TiltifyPollService}
+     */
+    private static _instance: TiltifyPollService; // eslint-disable-line no-use-before-define
+
+    /**
+     * Description placeholder
+     *
+     * @protected
+     * @type {{
+     *         [campaignId: string]: PopulatingTiltifyCampaignData;
+     *     }}
+     */
     declare protected pollerData: {
         [campaignId: string]: PopulatingTiltifyCampaignData;
     };
+
+    /**
+     * Description placeholder
+     *
+     * @protected
+     * @type {{ [campaignId: string]: boolean }}
+     */
     declare protected pollerStarted: { [campaignId: string]: boolean };
 
+    /**
+     * Creates an instance of TiltifyPollService.
+     *
+     * @constructor
+     * @private
+     */
     private constructor() {
         super();
     }
 
+    /**
+     * Description placeholder
+     *
+     * @public
+     * @static
+     * @returns {TiltifyPollService} 
+     */
     public static instance(): TiltifyPollService {
         return (
             TiltifyPollService._instance ||
@@ -45,6 +88,14 @@ export class TiltifyPollService extends AbstractPollService {
         );
     }
 
+    /**
+     * Description placeholder
+     *
+     * @protected
+     * @async
+     * @param {string} campaignId 
+     * @returns {Promise<void>} 
+     */
     protected async startPollActions(campaignId: string): Promise<void> {
         // TODO: Include here the actions you need to do only once before the poll starts
 
@@ -84,6 +135,14 @@ export class TiltifyPollService extends AbstractPollService {
         }
     }
 
+    /**
+     * Description placeholder
+     *
+     * @protected
+     * @async
+     * @param {string} campaignId 
+     * @returns {Promise<void>} 
+     */
     protected async poll(campaignId: string): Promise<void> {
         // TODO : Poll here the data from Tiltify
 
@@ -104,10 +163,24 @@ export class TiltifyPollService extends AbstractPollService {
         }
     }
 
+    /**
+     * Description placeholder
+     *
+     * @protected
+     * @param {string} campaignId 
+     */
     protected stopPollActions(campaignId: string): void {
         // TODO : Include here the actions you need to do only once after the poll ends
     }
 
+    /**
+     * Description placeholder
+     *
+     * @async
+     * @param {TiltifyCampaignDataStep1} campaignData
+     * @returns {Promise<TiltifyCampaignDataStep2>}
+     * @throws {Error} id campaign data is invalid or not loaded
+     */
     async loadCampaign(
         campaignData: TiltifyCampaignDataStep1
     ): Promise<TiltifyCampaignDataStep2> {
@@ -134,6 +207,14 @@ export class TiltifyPollService extends AbstractPollService {
         }
     }
 
+    /**
+     * Description placeholder
+     *
+     * @async
+     * @param {TiltifyCampaignDataStep2} campaignData
+     * @returns {Promise<TiltifyCampaignDataStep3>}
+     * @throws {Error} if cause data can't get loaded
+     */
     async loadCause(
         campaignData: TiltifyCampaignDataStep2
     ): Promise<TiltifyCampaignDataStep3> {
@@ -152,7 +233,16 @@ export class TiltifyPollService extends AbstractPollService {
         }
     }
 
-    async loadMilestones(campaignId: string, verbose = true): Promise<void> {
+    /**
+     * Description placeholder
+     *
+     * @async
+     * @param {string} campaignId
+     * @param {boolean} [verbose=true]
+     * @returns {Promise<void>}
+     * @throws {Error} if milestones can't be loaded
+     */
+    async loadMilestones(campaignId: string, verbose: boolean = true): Promise<void> {
         // Populate info about the Milestones.
         // This is gonna update to reflect the activation and possible new Milestones.
         try {
@@ -222,6 +312,15 @@ Reached: ${mi.reached}`
         }
     }
 
+    /**
+     * Description placeholder
+     *
+     * @async
+     * @param {string} campaignId
+     * @param {boolean} [verbose=true]
+     * @returns {Promise<void>}
+     * @throws {Error} if rewards can't be loaded
+     */
     async loadRewards(campaignId: string, verbose = true): Promise<void> {
         // Populate info about the rewards offered.
         // This is gonna update to reflect the quantities available and offered and possible new rewards.
@@ -251,6 +350,14 @@ Active: ${re.active}`
         }
     }
 
+    /**
+     * Description placeholder
+     *
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<void>}
+     * @throws {Error} if donations can't be updated
+     */
     async updateDonations(campaignId: string): Promise<void> {
         // Load the last donation date if available
         const { lastDonationDate, ids } =
@@ -288,6 +395,15 @@ Active: ${re.active}`
         tiltifyIntegration().saveDonations(campaignId, donationData);
     }
 
+    /**
+     * Description placeholder
+     *
+     * @async
+     * @param {string} campaignId
+     * @param {TiltifyDonation} donation
+     * @returns {Promise<void>}
+     * @throws {Error} if campaign data can't be updated
+     */
     async processDonation(
         campaignId: string,
         donation: TiltifyDonation
@@ -351,6 +467,14 @@ Cause : ${eventDetails.campaignInfo.cause}`);
         this.pollerData[campaignId].donationIds.push(donation.id);
     }
 
+    /**
+     * Description placeholder
+     *
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<void>}
+     * @throws {Error} if milestones can't be loaded or if database error
+     */
     async updateMilestones(campaignId: string): Promise<void> {
         const savedMilestones: TiltifyMilestone[] =
             await tiltifyIntegration().loadMilestones(campaignId);
@@ -371,6 +495,13 @@ Cause : ${eventDetails.campaignInfo.cause}`);
         }
     }
 
+    /**
+     * Description placeholder
+     *
+     * @param {string} campaignId 
+     * @param {TiltifyMilestone} milestone 
+     * @param {{ value: boolean }} milestoneTriggered 
+     */
     processMilestone(
         campaignId: string,
         milestone: TiltifyMilestone,
@@ -411,5 +542,10 @@ Cause: ${eventDetails.campaignInfo.cause}`);
     }
 }
 
+/**
+ * Description placeholder
+ *
+ * @type {typeof TiltifyPollService.instance}
+ */
 export const tiltifyPollService: typeof TiltifyPollService.instance =
     TiltifyPollService.instance.bind(TiltifyPollService);

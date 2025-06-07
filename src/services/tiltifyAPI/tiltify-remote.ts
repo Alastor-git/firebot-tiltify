@@ -14,11 +14,50 @@ import { logger } from "@shared/firebot-modules";
 import { AuthDetails } from "@crowbartools/firebot-custom-scripts-types";
 import { TiltifyTarget } from "@/types/target";
 import { TiltifyAuthManager } from "@/auth-manager";
+import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types/types/modules/auth-manager";
 
+/**
+ * Description placeholder
+ *
+ * @type {(keyof paths)[]}
+ */
+const UNPROTECTED_ROUTES: (keyof paths)[] = [
+    "/oauth/token",
+    "/oauth/authorize"
+];
+
+/**
+ * Singleton Class that interfaces with Tiltify API
+ *
+ * @export
+ * @class TiltifyAPIController
+ * @typedef {TiltifyAPIController}
+ */
 export class TiltifyAPIController {
-    // eslint-disable-next-line no-use-before-define
-    private static _instance: TiltifyAPIController;
+
+    /**
+     * Holds the singleton instance of the class
+     *
+     * @private
+     * @static
+     * @type {TiltifyAPIController}
+     */
+    private static _instance: TiltifyAPIController; // eslint-disable-line no-use-before-define
+
+    /**
+     * Stores the openapi-fetch client that performs communication
+     *
+     * @private
+     * @type {Client<paths, `${string}/${string}`>}
+     */
     private client: Client<paths, `${string}/${string}`>;
+
+    /**
+     * openapi-fetch Middleware that logs errors in case of unsuccessfull request
+     *
+     * @private
+     * @type {Middleware}
+     */
     private errorManagementMiddleware: Middleware = {
         async onResponse({ response }) {
             if (response.ok) {
@@ -41,9 +80,25 @@ export class TiltifyAPIController {
         }
     };
 
+    /**
+     * Creates an instance of TiltifyAPIController.
+     *
+     * @constructor
+     * @private
+     */
     private constructor() {
-        const authMiddleware: Middleware = {
-            async onRequest({ request }) {
+        const apiAuthMiddleware: Middleware = {
+            async onRequest({ schemaPath, request }) {
+                // Return the request unmodified if it's an unprotected route
+                if (
+                    UNPROTECTED_ROUTES.some((pathname: string) =>
+                        schemaPath.startsWith(pathname)
+                    )
+                ) {
+                    return undefined; // don’t modify request for certain paths
+                }
+
+                // In all other cases, use Bearer authentication scheme
                 // fetch token, if it doesn’t exist
                 const authRes: AuthDetails | null =
                     await TiltifyAuthManager.getAuth();
@@ -64,9 +119,17 @@ export class TiltifyAPIController {
             baseUrl: `${TILTIFY_API_BASE_URL}`
         });
         this.client.use(this.errorManagementMiddleware);
-        this.client.use(authMiddleware);
+        this.client.use(apiAuthMiddleware);
     }
 
+    /**
+     * Retrieves and if necessary creates the singleton instance of TiltifyAPIController
+     *
+     * @constructor
+     * @public
+     * @static
+     * @returns {TiltifyAPIController}
+     */
     public static instance(): TiltifyAPIController {
         return (
             TiltifyAPIController._instance ||
@@ -74,6 +137,12 @@ export class TiltifyAPIController {
         );
     }
 
+    /**
+     * Checks that the current token is valid by performing a request against the current-user endpoint
+     *
+     * @async
+     * @returns {Promise<boolean>}
+     */
     async validateToken(): Promise<boolean> {
         const {
             response,
@@ -94,6 +163,92 @@ export class TiltifyAPIController {
         return true;
     }
 
+    /**
+     * Requests a token from Tiltify
+     *
+     * @async
+     * @param {AuthProviderDefinition} authProvider
+     * @param {string} redirectUri
+     * @returns {Promise<AuthDetails>}
+     * @throws {Error} if Token can't be acquired
+     */
+    async createToken(
+        authProvider: AuthProviderDefinition,
+        redirectUri: string,
+        authorizationCode: string
+    ): Promise<AuthDetails> {
+        // eslint-disable-next-line new-cap
+        const { data, error, response } = await this.client.POST(
+            "/oauth/token",
+            {
+                params: {
+                    query: {
+                        client_id: authProvider.client.id, // eslint-disable-line camelcase
+                        client_secret: authProvider.client.secret ?? "", // eslint-disable-line camelcase
+                        redirect_uri: redirectUri, // eslint-disable-line camelcase
+                        code: authorizationCode,
+                        grant_type: "authorization_code", // eslint-disable-line camelcase
+                        scope: "public"
+                    }
+                }
+            }
+        );
+        if (!response.ok || !data) {
+            throw new Error(`Tiltify: Tiltify token couldn't be acquired`);
+        }
+        const token: AuthDetails = TiltifyAuthManager.getAuthDetails(
+            data as RawTiltifyToken
+        );
+        logger.debug(`Tiltify: Token successfully acquired`);
+        return token;
+    }
+
+    /**
+     * Requests for the token to be refreshed
+     *
+     * @async
+     * @param {AuthDetails} expiredToken
+     * @param {AuthProviderDefinition} authProvider
+     * @returns {Promise<AuthDetails>}
+     * @throws {Error} if Token can't be refreshed
+     */
+    async refreshToken(
+        expiredToken: AuthDetails,
+        authProvider: AuthProviderDefinition
+    ): Promise<AuthDetails> {
+        // eslint-disable-next-line new-cap
+        const { data, error, response } = await this.client.POST(
+            "/oauth/token",
+            {
+                params: {
+                    query: {
+                        client_id: authProvider.client.id, // eslint-disable-line camelcase
+                        client_secret: authProvider.client.secret ?? "", // eslint-disable-line camelcase
+                        grant_type: "refresh_token", // eslint-disable-line camelcase
+                        refresh_token: expiredToken.refresh_token, // eslint-disable-line camelcase
+                        scope: "public"
+                    }
+                }
+            }
+        );
+        if (!response.ok || !data) {
+            throw new Error(`Tiltify: Tiltify token couldn't be refreshed`);
+        }
+        const token: AuthDetails = TiltifyAuthManager.getAuthDetails(
+            data as RawTiltifyToken
+        );
+        logger.debug(`Tiltify: Token successfully refreshed`);
+        return token;
+    }
+
+    /**
+     * Retrieves information about a campaign
+     *
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<TiltifyCampaign>}
+     * @throws {Error} if no Token or request rejected
+     */
     async getCampaign(campaignId: string): Promise<TiltifyCampaign> {
         const {
             response,
@@ -112,6 +267,15 @@ export class TiltifyAPIController {
         return campaignData;
     }
 
+    /**
+     * Retrieves all the donations performed to a campaign since completedAfter
+     *
+     * @async
+     * @param {string} campaignId
+     * @param {(string | null)} [completedAfter=null]
+     * @returns {Promise<TiltifyDonation[]>}
+     * @throws {Error} if no Token or request rejected
+     */
     async getCampaignDonations(
         campaignId: string,
         completedAfter: string | null = null
@@ -141,6 +305,14 @@ export class TiltifyAPIController {
         return donationsData;
     }
 
+    /**
+     * Retrieves information about a cause
+     *
+     * @async
+     * @param {string} causeId
+     * @returns {Promise<TiltifyCause>}
+     * @throws {Error} if no Token or request rejected
+     */
     async getCause(causeId: string): Promise<TiltifyCause> {
         const {
             response,
@@ -159,6 +331,14 @@ export class TiltifyAPIController {
         return causeData;
     }
 
+    /**
+     * Gets the rewards of a campaign
+     *
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<TiltifyCampaignReward[]>}
+     * @throws {Error} if no Token or request rejected
+     */
     async getRewards(campaignId: string): Promise<TiltifyCampaignReward[]> {
         const {
             response,
@@ -182,6 +362,14 @@ export class TiltifyAPIController {
         return rewardsData;
     }
 
+    /**
+     * Gets the poll options of a campaign
+     *
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<TiltifyPoll[]>}
+     * @throws {Error} if no Token or request rejected
+     */
     async getPollOptions(campaignId: string): Promise<TiltifyPoll[]> {
         const {
             response,
@@ -202,6 +390,14 @@ export class TiltifyAPIController {
         return pollsData;
     }
 
+    /**
+     * Gets the list of targets for the campaign
+     *
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<TiltifyTarget[]>}
+     * @throws {Error} if no Token or request rejected
+     */
     async getTargets(campaignId: string): Promise<TiltifyTarget[]> {
         const {
             response,
@@ -225,6 +421,14 @@ export class TiltifyAPIController {
         return targetsData;
     }
 
+    /**
+     * Gets the list of Milestones for the campaign
+     *
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<TiltifyMilestone[]>}
+     * @throws {Error} if no Token or request rejected
+     */
     async getMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
         const {
             response,
@@ -249,5 +453,10 @@ export class TiltifyAPIController {
     }
 }
 
+/**
+ * Shortcut to TiltifyAPIController instantiator
+ *
+ * @type {typeof TiltifyAPIController.instance}
+ */
 export const tiltifyAPIController: typeof TiltifyAPIController.instance =
     TiltifyAPIController.instance.bind(TiltifyAPIController);
