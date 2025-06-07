@@ -19,5 +19,5 @@
             "@services/*": ["./src/services/*"]
         }
     },
-    "include": ["./src/**/*"]
+    "include": ["./src/**/*", "tests/mocks/mocks.test.ts"]
 }

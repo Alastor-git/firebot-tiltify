@@ -27,6 +27,8 @@ const script: Firebot.CustomScript = {
     },
     getDefaultParameters: () => ({}),
     run: ({ modules }) => {
+        logger.info("Loading Tiltify Integration...");
+
         // Setup globals
         initModules(modules);
 
@@ -36,11 +38,13 @@ const script: Firebot.CustomScript = {
             integration: tiltifyIntegration(integrationDefinition.id)
         };
         integrationManager.registerIntegration(integrationConfig);
+
+        logger.info("Tiltify Integration loaded");
     },
     stop: () => {
-        logger.info("Unloading Tiltify integration...");
+        logger.info("Unloading Tiltify Integration...");
 
-        logger.info("Tiltify integration unloaded");
+        logger.info("Tiltify Integration unloaded");
     }
 };
 

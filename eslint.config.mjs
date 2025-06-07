@@ -71,7 +71,8 @@ export default tseslint.config(
             strict: "off", // disabled b/c typescript
 
             // Deviation from < https://eslint.org/docs/rules/#variables >
-            "no-use-before-define": "warn", // require vars to be defined before use
+            // Turned on as typescript
+            "no-use-before-define": "off", // require vars to be defined before use
 
             "prefer-const": "warn",
 
@@ -87,7 +88,7 @@ export default tseslint.config(
             camelcase: "warn", // useCamelCasePleaseKThanks
             "comma-dangle": "warn", // No trailing commas
             "comma-spacing": "warn", // Reqire space after commas
-            "comma-style": "warn", // See: https://eslint.org/docs/rules/comma-style
+
             "computed-property-spacing": "warn", // No whitespace when using object[thing]
             curly: "warn", // Must wrap blocks with {}
             indent: "off", // Superseded by TS
@@ -131,7 +132,8 @@ export default tseslint.config(
             "@typescript-eslint/no-var-requires": "off",
             "@typescript-eslint/no-empty-function": "off",
             "@typescript-eslint/no-this-alias": "off",
-            "@typescript-eslint/ban-ts-comment": "off"
+            "@typescript-eslint/ban-ts-comment": "off",
+            "@typescript-eslint/no-use-before-define": "warn"
             //"@typescript-eslint/indent": ["warn", 4],
             //"@typescript-eslint/ban-types": "warn",
 
