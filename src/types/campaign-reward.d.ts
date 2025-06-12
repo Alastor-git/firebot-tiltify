@@ -9,3 +9,10 @@ export type TiltifyCampaignReward = {
     quantity: number | null;
     quantity_remaining: number | null;
 };
+
+export type TiltifyRewardClaim = {
+    id?: string;
+    quantity?: number;
+    reward_id?: string;
+    reward?: TiltifyCampaignReward;
+};

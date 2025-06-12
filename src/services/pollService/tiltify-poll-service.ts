@@ -9,7 +9,7 @@ import {
     TiltifyCampaignDataStep3
 } from "@/types/campaign-data";
 import { TiltifyMilestone } from "@/types/milestone";
-import { TiltifyCampaignReward } from "@/types/campaign-reward";
+import { TiltifyCampaignReward, TiltifyRewardClaim } from "@/types/campaign-reward";
 import {
     TILTIFY_DONATION_EVENT_ID,
     TILTIFY_EVENT_SOURCE_ID,
@@ -299,16 +299,16 @@ export class TiltifyPollService extends AbstractPollService {
         if (verbose) {
             logger.debug(
                 "Campaign Milestones: \n".concat(
-                this.pollerData[campaignId].milestones
-                    .map(
-                        mi => `
-ID: ${mi.id}
-Name: ${mi.name}
-Amount: $${mi.amount?.value}
-Active: ${mi.active}
-Reached: ${mi.reached}`
-                    )
-                    .join("\n")
+                    this.pollerData[campaignId].milestones
+                        .map(
+                            mi => `
+    ID: ${mi.id}
+    Name: ${mi.name}
+    Amount: $${mi.amount?.value}
+    Active: ${mi.active}
+    Reached: ${mi.reached}`
+                        )
+                        .join("\n")
                 )
             );
         }
@@ -339,15 +339,15 @@ Reached: ${mi.reached}`
         if (verbose) {
             logger.debug(
                 "Campaign Rewards: \n".concat(
-                this.pollerData[campaignId].rewards
-                    .map(
-                        re => `
-ID: ${re.id}
-Name: ${re.name}
-Amount: $${re.amount?.value}
-Active: ${re.active}`
-                    )
-                    .join("\n")
+                    this.pollerData[campaignId].rewards
+                        .map(
+                            re => `
+    ID: ${re.id}
+    Name: ${re.name}
+    Amount: $${re.amount?.value}
+    Active: ${re.active}`
+                        )
+                        .join("\n")
                 )
             );
         }
@@ -380,6 +380,20 @@ Active: ${re.active}`
                 cause: error
             });
         }
+
+        // update the campaign data if there have been new donations
+        if (donations) {
+            try {
+                // A donation has happened. Reload campaign info to update collected amounts
+                this.pollerData[campaignId].campaign =
+                    await tiltifyAPIController().getCampaign(campaignId);
+            } catch (error) {
+                throw new Error("API error while updating campaign data", {
+                    cause: error
+                });
+            }
+        }
+
         const sortedDonations = donations.sort(
             (a, b) =>
                 Date.parse(a.completed_at ?? "") -
@@ -416,27 +430,12 @@ Active: ${re.active}`
             return;
         }
 
-        try {
-            // A donation has happened. Reload campaign info to update collected amounts
-            // FIXME: Campaign should only be reloaded once if there are new donations rather than once per donation
-            this.pollerData[campaignId].campaign =
-                await tiltifyAPIController().getCampaign(campaignId);
-        } catch (error) {
-            throw new Error("Tiltify: API error while updating campaign data", {
-                cause: error
-            });
+        // If there are reward claims, we match and update the rewards
+        if (donation.reward_claims) {
+            for (const rewardClaim of donation.reward_claims) {
+                await this.processRewardClaim(campaignId, rewardClaim);
+            }
         }
-        // If we don't know the reward, reload rewards and retry.
-        let matchingreward: TiltifyCampaignReward | undefined = this.pollerData[
-            campaignId
-        ].rewards.find(ri => ri.id === donation.reward_id);
-        if (!matchingreward) {
-            await this.loadRewards(campaignId, false);
-            matchingreward = this.pollerData[campaignId].rewards.find(
-                ri => ri.id === donation.reward_id
-            );
-        }
-        // FIXME : Rewards contain info about quantity remaining. We should update that when a donation comes in claiming a reward.
 
         // Update the last donation date to the current one.
         this.pollerData[campaignId].lastDonationDate =
@@ -450,13 +449,13 @@ Active: ${re.active}`
             this.pollerData[campaignId].campaign,
             this.pollerData[campaignId].cause
         )
-            .createDonationEvent(donation, matchingreward)
+            .createDonationEvent(donation, donation.reward_claims !== null ? donation.reward_claims : undefined)
             .valueOf();
 
         logger.info(`Donation: 
 From ${eventDetails.from} for $${eventDetails.donationAmount}. 
 Total raised : $${eventDetails.campaignInfo.amountRaised}
-Reward: ${eventDetails.rewardName ?? eventDetails.rewardId}
+Rewards: ${eventDetails.rewards.map(rewardClaim => `${rewardClaim.quantity} * ${rewardClaim.name ?? rewardClaim.id}`).join(", ")}
 Campaign : ${eventDetails.campaignInfo.name}
 Cause : ${eventDetails.campaignInfo.cause}`);
         // Trigger the event
@@ -470,6 +469,32 @@ Cause : ${eventDetails.campaignInfo.cause}`);
         this.pollerData[campaignId].donationIds.push(donation.id);
     }
 
+    public async processRewardClaim(
+        campaignId: string,
+        rewardClaim: TiltifyRewardClaim
+    ): Promise<void> {
+        // Find the claimed reward in the list of known rewards
+        let matchingReward: TiltifyCampaignReward | undefined = this.pollerData[
+            campaignId
+        ].rewards.find(ri => ri.id === rewardClaim.reward_id);
+
+        // If I found a reward and it has a quantity limit, update the reward's remaining quantity
+        if (matchingReward && matchingReward.quantity && matchingReward.quantity_remaining) {
+            // eslint-disable-next-line camelcase
+            matchingReward.quantity_remaining = matchingReward.quantity_remaining - (rewardClaim.quantity ?? 1);
+        }
+
+        // If we don't know the reward, reload rewards and retry.
+        if (!matchingReward) {
+            await this.loadRewards(campaignId, false);
+            matchingReward = this.pollerData[campaignId].rewards.find(
+                ri => ri.id === rewardClaim.reward_id
+            );
+        }
+
+        rewardClaim.reward = matchingReward;
+    }
+
     /**
      * Description placeholder
      *
@@ -479,8 +504,9 @@ Cause : ${eventDetails.campaignInfo.cause}`);
      * @throws {Error} if milestones can't be loaded or if database error
      */
     async updateMilestones(campaignId: string): Promise<void> {
+        // FIXME: We appear to never reload the list of milestones from the API unless one is triggered (second timer ?)
         const savedMilestones: TiltifyMilestone[] =
-            await tiltifyIntegration().loadMilestones(campaignId);
+            await tiltifyIntegration().loadSavedMilestones(campaignId);
         const milestoneTriggered = { value: false };
         for (const milestone of savedMilestones) {
             this.processMilestone(campaignId, milestone, milestoneTriggered);
@@ -501,9 +527,9 @@ Cause : ${eventDetails.campaignInfo.cause}`);
     /**
      * Description placeholder
      *
-     * @param {string} campaignId 
-     * @param {TiltifyMilestone} milestone 
-     * @param {{ value: boolean }} milestoneTriggered 
+     * @param {string} campaignId
+     * @param {TiltifyMilestone} milestone
+     * @param {{ value: boolean }} milestoneTriggered
      */
     processMilestone(
         campaignId: string,

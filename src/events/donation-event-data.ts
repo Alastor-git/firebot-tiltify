@@ -1,14 +1,21 @@
 import { TiltifyDonation } from "@/types/donation";
 import { CampaignEvent, TiltifyCampaignEventData } from "./campaign-event-data";
-import { TiltifyCampaignReward } from "@/types/campaign-reward";
+import { TiltifyRewardClaim } from "@/types/campaign-reward";
 import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
+
+export type TiltifyRewardClaimEventData = {
+    id: string;
+    name: string;
+    quantity: number;
+    cost: number;
+    description: string;
+};
 
 export type TiltifyDonationEventData = TiltifyCampaignEventData & {
     from: string;
     donationAmount: number;
-    rewardId: string;
-    rewardName: string;
+    rewards: TiltifyRewardClaimEventData[];
     comment: string;
     pollOptionId: string;
     challengeId: string;
@@ -20,22 +27,22 @@ export class DonationEvent {
     constructor();
     constructor(
         donationData: TiltifyDonation,
-        matchingRewardData?: TiltifyCampaignReward
+        rewardClaimsData?: TiltifyRewardClaim[]
     );
     constructor(
         donationData: TiltifyDonation,
-        matchingRewardData: TiltifyCampaignReward | undefined,
+        rewardClaimsData: TiltifyRewardClaim[] | undefined,
         campaignData: TiltifyCampaign,
         causeData?: TiltifyCause
     );
     constructor(
         donationData: TiltifyDonation,
-        matchingRewardData: TiltifyCampaignReward | undefined,
+        rewardClaimsData: TiltifyRewardClaim[] | undefined,
         campaignData: CampaignEvent
     );
     constructor(
         donationData?: TiltifyDonation,
-        matchingRewardData?: TiltifyCampaignReward,
+        rewardClaimsData?: TiltifyRewardClaim[],
         campaignData?: TiltifyCampaign | CampaignEvent,
         causeData?: TiltifyCause
     ) {
@@ -49,8 +56,16 @@ export class DonationEvent {
             ...campaignEvent.valueOf(),
             from: donationData?.donor_name ?? "",
             donationAmount: Number(donationData?.amount?.value ?? 0),
-            rewardId: donationData?.reward_id ?? "",
-            rewardName: matchingRewardData?.name ?? "",
+            rewards: rewardClaimsData?.map<TiltifyRewardClaimEventData>((rewardClaim) => {
+                const rewardClaimEventData: TiltifyRewardClaimEventData = {
+                    id: rewardClaim.reward?.id ?? "",
+                    name: rewardClaim.reward?.name ?? "",
+                    quantity: rewardClaim.quantity ?? 1,
+                    cost: Number(rewardClaim.reward?.amount?.value ?? 0),
+                    description: rewardClaim.reward?.description ?? ""
+                };
+                return rewardClaimEventData;
+            }) ?? [],
             comment: donationData?.donor_comment ?? "",
             pollOptionId: donationData?.poll_option_id ?? "",
             challengeId: donationData?.target_id ?? ""
@@ -66,14 +81,14 @@ declare module "./campaign-event-data" {
     interface CampaignEvent {
         createDonationEvent(
             donation: TiltifyDonation,
-            matchingReward: TiltifyCampaignReward | undefined
+            rewardClaims: TiltifyRewardClaim[] | undefined
         ): DonationEvent;
     }
 }
 
 CampaignEvent.prototype.createDonationEvent = function (
     donation: TiltifyDonation,
-    matchingReward: TiltifyCampaignReward | undefined = undefined
+    rewardClaims: TiltifyRewardClaim[] | undefined = undefined
 ): DonationEvent {
-    return new DonationEvent(donation, matchingReward, this as CampaignEvent);
+    return new DonationEvent(donation, rewardClaims, this as CampaignEvent);
 };
