@@ -343,7 +343,7 @@ export class TiltifyIntegration
      * @param {string} campaignId
      * @returns {Promise<TiltifyMilestone[]>}
      */
-    public async loadMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
+    public async loadSavedMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
         let savedMilestones: TiltifyMilestone[] | undefined;
         try {
             savedMilestones = (await this.db.get(

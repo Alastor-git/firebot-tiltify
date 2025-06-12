@@ -160,7 +160,7 @@ export class TiltifyPollService extends AbstractPollService {
                 `Stopped polling ${campaignId} because of an error.`
             );
             logger.debug(error);
-            this.pollerStarted[campaignId] = false;
+            this.stop(campaignId);
         }
     }
 
@@ -258,7 +258,7 @@ export class TiltifyPollService extends AbstractPollService {
         // Load saved milestones if any
         // They are saved to keep memory of which milestones have previously been reached so we know what events to trigger
         const savedMilestones: TiltifyMilestone[] =
-            await tiltifyIntegration().loadMilestones(campaignId);
+            await tiltifyIntegration().loadSavedMilestones(campaignId);
 
         this.pollerData[campaignId].milestones.forEach(
             (milestone: TiltifyMilestone) => {
