@@ -1,4 +1,4 @@
 export { TiltifyDonationFromVariable } from "./donation-from";
 export { TiltifyDonationAmountVariable } from "./donation-amount";
-export { TiltifyDonationRewardIdVariable } from "./donation-reward-id";
+export { TiltifyDonationRewardIdsVariable } from "./donation-reward-ids";
 export { TiltifyDonationCommentVariable } from "./donation-comment";

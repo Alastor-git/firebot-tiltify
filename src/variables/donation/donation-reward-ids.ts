@@ -6,19 +6,19 @@ import {
 } from "@/constants";
 import { TiltifyDonationEventData } from "@/events/donation-event-data";
 
-export const TiltifyDonationRewardIdVariable: ReplaceVariable = {
+export const TiltifyDonationRewardIdsVariable: ReplaceVariable = {
     definition: {
-        handle: "tiltifyDonationRewardId",
-        description: "The reward ID of a donation from Tiltify",
+        handle: "tiltifyDonationRewardIds",
+        description: "The JSON array of the reward IDs of a donation from Tiltify",
         triggers: {
             event: [`${TILTIFY_EVENT_SOURCE_ID}:${TILTIFY_DONATION_EVENT_ID}`],
             manual: true
         },
-        possibleDataOutput: [OutputDataType.TEXT]
+        possibleDataOutput: [OutputDataType.ARRAY]
     },
-    evaluator: function (trigger): string {
+    evaluator: function (trigger): string[] {
         const eventData: TiltifyDonationEventData = trigger.metadata
             ?.eventData as TiltifyDonationEventData;
-        return eventData?.rewardId ?? "-1";
+        return eventData?.rewards.map(rewardClaim => rewardClaim.id);
     }
 };
