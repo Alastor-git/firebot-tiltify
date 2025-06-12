@@ -44,6 +44,8 @@ const script: Firebot.CustomScript = {
     stop: () => {
         logger.info("Unloading Integration...");
 
+        tiltifyIntegration("tiltify").stop();
+
         logger.info("Integration unloaded");
     }
 };

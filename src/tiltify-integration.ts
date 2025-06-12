@@ -202,6 +202,7 @@ export class TiltifyIntegration
      * @public
      */
     public unlink(): void {
+        this.disconnect();
         logger.info("integration unlinked.");
     }
 
@@ -280,6 +281,8 @@ export class TiltifyIntegration
             );
         // Disconnect
         this.connected = false;
+
+        tiltifyPollService().stopAll();
         logger.debug("Disconnecting Tiltify.");
         this.emit("disconnected", integrationDefinition.id);
     }
@@ -297,6 +300,18 @@ export class TiltifyIntegration
         }
         // Reconnect
         this.connect(integrationData);
+    }
+
+    public stop(): void {
+        logger.info('Stopping integration services.');
+
+        tiltifyPollService().stopAll();
+
+        // Disconnect
+        this.connected = false;
+        logger.debug("Disconnecting Tiltify.");
+
+        logger.info('Integration services stopped.');
     }
 
     /**
