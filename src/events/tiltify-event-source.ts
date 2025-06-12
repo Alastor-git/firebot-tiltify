@@ -19,8 +19,15 @@ export const TiltifyEventSource: EventSource = {
             manualMetadata: {
                 from: "Tiltify",
                 donationAmount: 4.2,
-                rewardId: null,
-                rewardName: "",
+                rewards: [
+                    {
+                        id: "",
+                        name: "Default reward",
+                        quantity: 1,
+                        cost: 5,
+                        description: "This is a dummy reward"
+                    }
+                ],
                 comment: "Thanks for the stream!",
                 pollOptionId: null,
                 challengeId: null,
@@ -41,7 +48,14 @@ export const TiltifyEventSource: EventSource = {
             activityFeed: {
                 icon: "fad fa-heart",
                 getMessage: (eventData: TiltifyDonationEventData) => {
-                    return `**${eventData.from}** donated **$${eventData.donationAmount}** to ${eventData.campaignInfo.name}${eventData.rewardName ? ` with reward *${eventData.rewardName}*` : eventData.rewardId ? ` with reward *${eventData.rewardId}*` : ""}`;
+                    return `**${eventData.from}** donated **$${eventData.donationAmount}** to ${eventData.campaignInfo.name}${
+                        eventData.rewards.length === 0 ? "" :
+                            eventData.rewards.length === 1 && eventData.rewards[0].quantity <= 1 ?
+                                ` with reward *${eventData.rewards[0].name ? eventData.rewards[0].name : eventData.rewards[0].id}*` :
+                                ` with rewards ${eventData.rewards.map(rewardClaim => 
+                                    `${rewardClaim.quantity <= 1 ? '' : `${rewardClaim.quantity} x `}*${rewardClaim.name ? rewardClaim.name : rewardClaim.id}*`
+                                ).join(', ')}`
+                    }`;// TODO: Test redeeming several of a reward
                 }
             }
         },

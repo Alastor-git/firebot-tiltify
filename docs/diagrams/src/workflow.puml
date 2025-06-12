@@ -1,0 +1,124 @@
+@startuml workflow
+
+skinparam sequenceMessageAlign center
+skinparam noteTextAlignment center
+skinparam BoxPadding 10
+
+actor RoXxXz0r21 as viewer1 <<viewer>>
+actor GamerGurl19 as viewer2 <<viewer>>
+
+box "Twitch"
+entity "Twitch platform" as Twitch
+end box
+
+box "Firebot"
+participant Frontend
+participant EventManager
+participant VariablesManager
+Participant IntegrationManager
+boundary AbstractIntegrationController
+Participant "OBS Integration" as OBSIntegration
+end box
+
+box "Firebot-Tiltify Integration"
+participant TiltifyIntegrationManager
+participant PollingManager
+participant TiltifyAPI
+end box
+
+box "Tiltify platform" as Tiltify
+participant API as TiltifyInternalAPI
+participant Website as TiltifyWebsite
+end box
+box "OBS"
+entity OBS
+end box
+
+actor Stweamuuuu as streamer <<streamer>>
+
+note over IntegrationManager: Registers integrations\nConfigures them\nStarts/Stops them\nManages their data\nPerforms Auth for them. 
+/ note over AbstractIntegrationController: Describes how IntegrationManager\nExpects the Integrationcontroller\nto be structured
+/ note over TiltifyIntegrationManager: Implements integration\ninterface
+/ note over PollingManager: Polls Tiltify for Data on campaigns\nReacts to new data
+/ note over TiltifyAPI: Translates between Integration\nand Tiltify languages
+
+== Structural relations & Initialisation ==
+
+IntegrationManager -> AbstractIntegrationController: Creates interface
+AbstractIntegrationController -> TiltifyIntegrationManager: Implements interface
+AbstractIntegrationController -> OBSIntegration: Implements interface
+TiltifyIntegrationManager -> EventManager: Register Donation event
+TiltifyIntegrationManager -> VariablesManager: Register Donation event variables
+
+== Relationships ==
+
+streamer --> TiltifyWebsite ++: Creates 'Taters Taught' campaign
+activate streamer
+streamer --> Frontend: Configure Tiltify Integration to listen to Taters Taught
+Frontend --> IntegrationManager: settings-update event with Taters Taught campaign registered
+IntegrationManager --> TiltifyIntegrationManager: onSettingsUpdate(newSettings)
+TiltifyIntegrationManager --> PollingManager ++: Listen to campaign Taters Taught
+loop every few seconds
+    PollingManager --> PollingManager ++ : Poll event
+        PollingManager --> TiltifyAPI ++ : Ask for new donations 
+            TiltifyAPI --> TiltifyInternalAPI ++ : API request to Tiltify\nDonations endpoint
+            return Recent donations\ndata in JSON
+        return List of Donation objects
+        ?<- PollingManager : Raise Donation event\nIf necessary
+    PollingManager --
+end
+
+streamer --> OBS     ++ : Start stream
+OBS     --> Twitch --++ : Send video
+Twitch  --> viewer2  ++ : Online notif
+Twitch  --> viewer1  ++ : Online notif
+viewer2 --> Twitch      : Watch Stweamuuuu
+Twitch  --> viewer2     : Broadcast video
+deactivate viewer2
+viewer1 --> Twitch      : Watch Stweamuuuu
+Twitch  --> viewer1     : Broadcast video
+deactivate viewer1
+deactivate Twitch
+== ==
+... Some time during stream ...
+== ==
+viewer1 --> TiltifyWebsite : Give 400$ to Taters Taught.\nRedeem 'Your Mom'
+activate viewer1
+
+PollingManager --> PollingManager ++ : Poll event
+    PollingManager --> TiltifyAPI ++ : Any new Donation ? 
+        TiltifyAPI --> TiltifyInternalAPI ++ : Yo, any donno ? 
+        return RoXxXz0r21 gave 400$\nto redeem Your Mom
+    return Donation object\nRoXxXz0r21 donation
+PollingManager --> EventManager --++ : Raise Donation event
+
+EventManager --> OBSIntegration ++ : Play 'yourMom.wav'
+EventManager --> Frontend --++ : Show Donation Event
+OBSIntegration --> OBS --++ : Play 'yourMom.wav'
+Frontend --> streamer --++ : Visual feedback 
+streamer --> OBS -- : Yo RoXxXz0r21\nThanks for the donno! 
+OBS --> Twitch --++
+& Twitch --> viewer2 ++
+& Twitch --> viewer1 ++
+viewer1 --> Twitch -- : Winku
+viewer2 --> Twitch --++ : RoXxXz0r21's so cool\nI wanna lick his face
+Twitch --> viewer1 -- : Instant gratification
+deactivate viewer1
+deactivate Twitch
+==  == 
+... At the end of stream ...
+==  ==
+streamer --> Frontend ++ : Stop Tiltify Integration
+Frontend --> IntegrationManager ++ : Stop TiltifyIntegration
+IntegrationManager --> TiltifyIntegrationManager --++ : Stop
+TiltifyIntegrationManager --> PollingManager : Stop listening to Taters Taught
+deactivate PollingManager
+' TiltifyIntegrationManager -> EventManager : Unregister Donation event
+' TiltifyIntegrationManager -> VariablesManager : Unregister Donation event variables
+TiltifyIntegrationManager -> IntegrationManager --++ : disconnected
+IntegrationManager -> Frontend -- : integration-disconnected Tiltify
+Frontend --> streamer -- : Tiltify disconnected
+streamer --> TiltifyWebsite : End the campaign
+deactivate streamer
+deactivate TiltifyWebsite
+@enduml

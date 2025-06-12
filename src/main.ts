@@ -3,19 +3,16 @@ import {
     Integration
 } from "@crowbartools/firebot-custom-scripts-types";
 
-import {
-    TiltifyIntegration,
-    TiltifySettings,
-    integrationDefinition
-} from "./tiltify-integration";
+import { TiltifySettings, integrationDefinition } from "./tiltify-integration";
+import { logger } from "./tiltify-logger";
 
 import {
-    logger,
     integrationManager,
     initModules
 } from "@shared/firebot-modules";
+import { tiltifyIntegration } from "./services";
 
-const packageInfo = require("../package.json");
+import * as packageInfo from "../package.json";
 
 const script: Firebot.CustomScript = {
     getScriptManifest: () => {
@@ -33,17 +30,23 @@ const script: Firebot.CustomScript = {
         // Setup globals
         initModules(modules);
 
+        logger.info("Loading Integration...");
+
         // Create and Register the integration
         const integrationConfig: Integration<TiltifySettings> = {
             definition: integrationDefinition,
-            integration: new TiltifyIntegration()
+            integration: tiltifyIntegration(integrationDefinition.id)
         };
         integrationManager.registerIntegration(integrationConfig);
+
+        logger.info("Integration loaded");
     },
     stop: () => {
-        logger.info("Unloading Tiltify integration...");
+        logger.info("Unloading Integration...");
 
-        logger.info("Tiltify integration unloaded");
+        tiltifyIntegration("tiltify").stop();
+
+        logger.info("Integration unloaded");
     }
 };
 
