@@ -21,9 +21,9 @@ import * as EventFilters from "./filters";
 
 import { tiltifyPollService } from "./services";
 import { TiltifyDatabase } from "@shared/database";
+import { logger } from "./tiltify-logger";
 
 import {
-    logger,
     integrationManager,
     variableManager,
     eventManager,
@@ -68,8 +68,7 @@ export type TiltifyIntegrationEvents = IntegrationEvents & {
  */
 export class TiltifyIntegration
     extends TypedEmitter<TiltifyIntegrationEvents>
-    implements IntegrationController<TiltifySettings, TiltifyIntegrationEvents>
-{
+    implements IntegrationController<TiltifySettings, TiltifyIntegrationEvents> {
     /**
      * Description placeholder
      *
@@ -158,7 +157,7 @@ export class TiltifyIntegration
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public init(_linked: boolean, _integrationData: IntegrationData): void {
-        logger.info(`Initializing Tiltify integration...`);
+        logger.info(`Initializing integration...`);
         // Register all events
         eventManager.registerEventSource(TiltifyEventSource);
 
@@ -176,11 +175,11 @@ export class TiltifyIntegration
 
         integrationManager.on("token-refreshed", ({ integrationId }) => {
             if (integrationId === this.integrationId) {
-                logger.debug("Tiltify token refreshed");
+                logger.debug("token refreshed");
             }
         });
 
-        logger.info("Tiltify integration loaded");
+        logger.info("Integration initialized");
     }
 
 
@@ -194,7 +193,7 @@ export class TiltifyIntegration
     public link(_linkData: LinkData): void {
         // Link is when we have received the token for the first time.
         // Once Linked, we're allowed to connect
-        logger.info("Tiltify integration linked.");
+        logger.info("integration linked.");
     }
 
     /**
@@ -203,7 +202,7 @@ export class TiltifyIntegration
      * @public
      */
     public unlink(): void {
-        logger.info("Tiltify integration unlinked.");
+        logger.info("integration unlinked.");
     }
 
     /**
@@ -235,7 +234,7 @@ export class TiltifyIntegration
             integrationData.userSettings == null ||
             integrationData.userSettings.campaignSettings == null
         ) {
-            logger.debug("Tiltify : Integration settings invalid. ");
+            logger.debug("Integration settings invalid. ");
             this.disconnect();
             return;
         }
@@ -245,7 +244,7 @@ export class TiltifyIntegration
         const campaignId: string = userSettings.campaignSettings
             .campaignId as string;
         if (campaignId == null || campaignId === "") {
-            logger.debug("Tiltify : No campaign Id. ");
+            logger.debug("No campaign Id. ");
             this.disconnect();
             return;
         }
@@ -257,7 +256,7 @@ export class TiltifyIntegration
 
         // Check if we failed starting the polling service
         if (!tiltifyPollService().isStarted(campaignId)) {
-            logger.debug("Tiltify : Failed to start the polling. ");
+            logger.debug("Failed to start the polling. ");
             this.disconnect();
             return;
         }
@@ -281,8 +280,7 @@ export class TiltifyIntegration
             );
         // Disconnect
         this.connected = false;
-        // TODO: stop polling and other services ? 
-        logger.debug("Tiltify : Disconnecting Tiltify.");
+        logger.debug("Disconnecting Tiltify.");
         this.emit("disconnected", integrationDefinition.id);
     }
 
@@ -338,7 +336,7 @@ export class TiltifyIntegration
             )) as TiltifyMilestone[];
         } catch {
             logger.debug(
-                `Tiltify : No milestones saved for campaign ${campaignId}. Initializing database. `
+                `No milestones saved for campaign ${campaignId}. Initializing database. `
             );
             try {
                 this.db.set(`/tiltify/${campaignId}/milestones`, []);
@@ -388,7 +386,7 @@ export class TiltifyIntegration
             )) as string;
         } catch {
             logger.debug(
-                `Tiltify : Couldn't find the last donation date in campaign ${campaignId}. `
+                `Couldn't find the last donation date in campaign ${campaignId}. `
             );
             lastDonationDate = "";
         }
@@ -399,7 +397,7 @@ export class TiltifyIntegration
             ids = (await this.db.get(`/tiltify/${campaignId}/ids`)) as string[];
         } catch {
             logger.debug(
-                `Tiltify : No donations saved for campaign ${campaignId}. Initializing database. `
+                `No donations saved for campaign ${campaignId}. Initializing database. `
             );
             try {
                 this.db.set(`/tiltify/${campaignId}/ids`, []);

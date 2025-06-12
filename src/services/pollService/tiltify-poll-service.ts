@@ -1,5 +1,6 @@
 import { AbstractPollService } from "./poll-service";
-import { logger, eventManager } from "@shared/firebot-modules";
+import { eventManager } from "@shared/firebot-modules";
+import { logger } from "@/tiltify-logger";
 
 import {
     PopulatingTiltifyCampaignData,
@@ -128,7 +129,7 @@ export class TiltifyPollService extends AbstractPollService {
             await this.loadMilestones(campaignId);
         } catch (error) {
             logger.debug(
-                `Tiltify : Stopped polling ${campaignId} because of an error.`
+                `Stopped polling ${campaignId} because of an error.`
             );
             logger.debug(error);
             this.pollerStarted[campaignId] = false;
@@ -156,7 +157,7 @@ export class TiltifyPollService extends AbstractPollService {
             await this.updateMilestones(campaignId);
         } catch (error) {
             logger.debug(
-                `Tiltify : Stopped polling ${campaignId} because of an error.`
+                `Stopped polling ${campaignId} because of an error.`
             );
             logger.debug(error);
             this.pollerStarted[campaignId] = false;
@@ -201,7 +202,7 @@ export class TiltifyPollService extends AbstractPollService {
             return { ...campaignData, campaign: campaign, Step: "Step 2" };
         } catch (error) {
             logger.warn(
-                `Tiltify : Information about campaign ${campaignData.campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
+                `Information about campaign ${campaignData.campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
             );
             throw new Error("Campaign not loaded", { cause: error });
         }
@@ -227,7 +228,7 @@ export class TiltifyPollService extends AbstractPollService {
             return { ...campaignData, cause: cause, Step: "Step 3" };
         } catch (error) {
             logger.warn(
-                `Tiltify : Information about cause ${campaignData.campaign.cause_id} couldn't be retrieved or are invalid. Message: ${error.message}`
+                `Information about cause ${campaignData.campaign.cause_id} couldn't be retrieved or are invalid. Message: ${error.message}`
             );
             throw new Error("Cause not loaded", { cause: error });
         }
@@ -250,7 +251,7 @@ export class TiltifyPollService extends AbstractPollService {
                 await tiltifyAPIController().getMilestones(campaignId);
         } catch (error) {
             logger.warn(
-                `Tiltify : Information about Milestones for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
+                `Information about Milestones for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
             );
             throw new Error("Milestones not loaded", { cause: error });
         }
@@ -277,13 +278,13 @@ export class TiltifyPollService extends AbstractPollService {
                     // Set reached as false so the event triggers
                     milestone.reached = false;
                     logger.debug(
-                        `Tiltify: Campaign Milestone ${milestone.name} is new. `
+                        `Campaign Milestone ${milestone.name} is new. `
                     );
                 } else if (milestone.reached && !savedMilestone.reached) {
                     // If the saved milestone was unreached, we want to make sure that if it's currently reached, we trip the event too
                     milestone.reached = false;
                     logger.debug(
-                        `Tiltify: Campaign Milestone ${milestone.name} is has been reached while Tiltify was offline. Ensuring the event triggers. `
+                        `Campaign Milestone ${milestone.name} is has been reached while Tiltify was offline. Ensuring the event triggers. `
                     );
                 }
             },
@@ -297,7 +298,7 @@ export class TiltifyPollService extends AbstractPollService {
         // Log the new Milestones state
         if (verbose) {
             logger.debug(
-                "Tiltify: Campaign Milestones: ",
+                "Campaign Milestones: \n".concat(
                 this.pollerData[campaignId].milestones
                     .map(
                         mi => `
@@ -308,6 +309,7 @@ Active: ${mi.active}
 Reached: ${mi.reached}`
                     )
                     .join("\n")
+                )
             );
         }
     }
@@ -330,13 +332,13 @@ Reached: ${mi.reached}`
                 await tiltifyAPIController().getRewards(campaignId);
         } catch (error) {
             logger.warn(
-                `Tiltify : Information about Rewards for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
+                `Information about Rewards for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
             );
             throw new Error("Rewards not loaded", { cause: error });
         }
         if (verbose) {
             logger.debug(
-                "Tiltify: Campaign Rewards: ",
+                "Campaign Rewards: \n".concat(
                 this.pollerData[campaignId].rewards
                     .map(
                         re => `
@@ -346,6 +348,7 @@ Amount: $${re.amount?.value}
 Active: ${re.active}`
                     )
                     .join("\n")
+                )
             );
         }
     }
@@ -373,7 +376,7 @@ Active: ${re.active}`
                 this.pollerData[campaignId].lastDonationDate
             );
         } catch (error) {
-            throw new Error("Tiltify: API error while updating donations. ", {
+            throw new Error("API error while updating donations. ", {
                 cause: error
             });
         }
@@ -439,7 +442,7 @@ Active: ${re.active}`
         this.pollerData[campaignId].lastDonationDate =
             donation.completed_at ?? "";
         logger.debug(
-            `Tiltify: Last processed donation at : ${this.pollerData[campaignId].lastDonationDate}`
+            `Last processed donation at : ${this.pollerData[campaignId].lastDonationDate}`
         );
 
         // Extract the info to populate a Firebot donation event.
@@ -450,8 +453,8 @@ Active: ${re.active}`
             .createDonationEvent(donation, matchingreward)
             .valueOf();
 
-        logger.info(`Tiltify : 
-Donation from ${eventDetails.from} for $${eventDetails.donationAmount}. 
+        logger.info(`Donation: 
+From ${eventDetails.from} for $${eventDetails.donationAmount}. 
 Total raised : $${eventDetails.campaignInfo.amountRaised}
 Reward: ${eventDetails.rewardName ?? eventDetails.rewardId}
 Campaign : ${eventDetails.campaignInfo.name}
@@ -525,8 +528,7 @@ Cause : ${eventDetails.campaignInfo.cause}`);
                     .createMilestoneEvent(milestone)
                     .valueOf();
 
-            logger.info(`Tiltify : 
-Milestone ${eventDetails.name} reached. 
+            logger.info(`Milestone ${eventDetails.name} reached. 
 Target amount : $${eventDetails.amount}
 Reached amount: $${eventDetails.campaignInfo.amountRaised}
 Campaign: ${eventDetails.campaignInfo.name}

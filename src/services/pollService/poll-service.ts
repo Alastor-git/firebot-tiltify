@@ -1,5 +1,5 @@
 import { TypedEmitter } from "tiny-typed-emitter";
-import { logger } from "@shared/firebot-modules";
+import { logger } from "@/tiltify-logger";
 
 interface PollingEvents {
     "polling-started": (campaignId: string) => void;
@@ -48,7 +48,7 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
 
         if (!this.pollerStarted[campaignId]) {
             logger.debug(
-                `Tiltify: Failed to start polling Tiltify campaign ${campaignId}.`
+                `Failed to start polling Tiltify campaign ${campaignId}.`
             );
             this.stop(campaignId);
             return;
@@ -60,7 +60,7 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
         );
 
         logger.debug(
-            `Tiltify: Started polling Tiltify campaign ${campaignId}.`
+            `Started polling Tiltify campaign ${campaignId}.`
         );
         this.emit("polling-started", campaignId);
     }
@@ -75,13 +75,13 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
         delete this.pollerData[campaignId];
 
         logger.debug(
-            `Tiltify: Stopped polling Tiltify campaing ${campaignId}.`
+            `Stopped polling Tiltify campaing ${campaignId}.`
         );
         this.emit("polling-stopped", campaignId);
     }
 
     public stopAll() {
-        logger.debug(`Tiltify: Stopping polling for all Tiltify campaigns.`);
+        logger.debug(`Stopping polling for all Tiltify campaigns.`);
         for (const campaignId of Object.keys(this.poller)) {
             this.stop(campaignId);
         }

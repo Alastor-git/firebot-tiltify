@@ -10,7 +10,7 @@ import { TiltifyDonation } from "@/types/donation";
 import { TiltifyPoll } from "@/types/poll";
 import { TiltifyMilestone } from "@/types/milestone";
 
-import { logger } from "@shared/firebot-modules";
+import { logger } from "@/tiltify-logger";
 import { AuthDetails } from "@crowbartools/firebot-custom-scripts-types";
 import { TiltifyTarget } from "@/types/target";
 import { TiltifyAuthManager } from "@/auth-manager";
@@ -65,12 +65,12 @@ export class TiltifyAPIController {
             }
             const { status, statusText, url } = response;
             logger.warn(
-                `Tiltify: API error ${status} when requesting "${url}": ${statusText}`
+                `API error ${status} when requesting "${url}": ${statusText}`
             );
         },
         async onError({ request, error }) {
             logger.warn(
-                `Tiltify: API error when requesting "${request.url}": ${error}`
+                `API error when requesting "${request.url}": ${error}`
             );
             // Return an Error 520 for unknown error
             return new Response(null, {
@@ -151,14 +151,14 @@ export class TiltifyAPIController {
         } = await this.client.GET("/api/public/current-user");
         if (!response.ok || !data?.data) {
             logger.warn(
-                `Tiltify: Tiltify token couldn't be validated or was invalid`
+                `Token couldn't be validated or was invalid`
             );
             return false;
         }
 
         const userData: components["schemas"]["User"] = data.data;
         logger.debug(
-            `Tiltify: Token successfully validated for user ${userData.username}`
+            `Token successfully validated for user ${userData.username}`
         );
         return true;
     }
@@ -194,12 +194,12 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data) {
-            throw new Error(`Tiltify: Tiltify token couldn't be acquired`);
+            throw new Error(`Token couldn't be acquired`);
         }
         const token: AuthDetails = TiltifyAuthManager.getAuthDetails(
             data as RawTiltifyToken
         );
-        logger.debug(`Tiltify: Token successfully acquired`);
+        logger.debug(`Token successfully acquired`);
         return token;
     }
 
@@ -232,12 +232,12 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data) {
-            throw new Error(`Tiltify: Tiltify token couldn't be refreshed`);
+            throw new Error(`Tiltify token couldn't be refreshed`);
         }
         const token: AuthDetails = TiltifyAuthManager.getAuthDetails(
             data as RawTiltifyToken
         );
-        logger.debug(`Tiltify: Token successfully refreshed`);
+        logger.debug(`Token successfully refreshed`);
         return token;
     }
 

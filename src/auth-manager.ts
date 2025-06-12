@@ -5,7 +5,8 @@ import {
 } from "@crowbartools/firebot-custom-scripts-types";
 import { tiltifyAPIController, tiltifyIntegration } from "@/services";
 
-import { logger, integrationManager } from "@shared/firebot-modules";
+import { integrationManager } from "@shared/firebot-modules";
+import { logger } from "./tiltify-logger";
 import {
     TiltifyIntegrationEvents,
     TiltifySettings
@@ -31,7 +32,7 @@ export class TiltifyAuthManager {
         // Get the saved access token
         let token: AuthDetails | null = await TiltifyAuthManager.getAuth();
         if (token === null) {
-            logger.debug("Tiltify : Couldn't retrieve a valid token. ");
+            logger.debug("Couldn't retrieve a valid token. ");
             return false;
         }
 
@@ -40,12 +41,12 @@ export class TiltifyAuthManager {
             return true;
         }
         // Token wasn't valid, attempt to refresh it
-        logger.debug("Tiltify : Token invalid. ");
-        logger.debug("Tiltify : Attempting to refresh token. ");
+        logger.debug("Token invalid. ");
+        logger.debug("Attempting to forcibly refresh the token. ");
         token = await TiltifyAuthManager.refreshToken();
         // The refreshing fails.
         if (token === null) {
-            logger.debug("Tiltify : Refreshing token failed. ");
+            logger.debug("Refreshing token failed. ");
             return false;
         }
         return true;
@@ -85,12 +86,14 @@ export class TiltifyAuthManager {
                     integrationId
                 );
             if (integration == null || !integrationDefinition.linked) {
+            logger.warn("Integration is not linked!");
                 tiltifyIntegration().disconnect();
                 return null;
             }
 
             let token: AuthDetails | null = null;
             if (integrationDefinition.linkType !== "auth") {
+            logger.warn("Integration has the wrong link type!");
                 return null;
             }
             const authProvider: AuthProviderDefinition = integrationDefinition.authProviderDetails;
