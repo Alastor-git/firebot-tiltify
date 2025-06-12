@@ -1,14 +1,12 @@
 import {
     AuthDetails,
-    Integration,
-    LinkData
+    Integration
 } from "@crowbartools/firebot-custom-scripts-types";
 import { tiltifyAPIController, tiltifyIntegration } from "@/services";
 
 import { integrationManager } from "@shared/firebot-modules";
 import { logger } from "./tiltify-logger";
 import {
-    TiltifyIntegrationEvents,
     TiltifySettings
 } from "@/tiltify-integration";
 import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types/types/modules/auth-manager";
@@ -43,7 +41,7 @@ export class TiltifyAuthManager {
         // Token wasn't valid, attempt to refresh it
         logger.debug("Token invalid. ");
         logger.debug("Attempting to forcibly refresh the token. ");
-        token = await TiltifyAuthManager.refreshToken();
+        token = await TiltifyAuthManager.getAuth(true);
         // The refreshing fails.
         if (token === null) {
             logger.debug("Refreshing token failed. ");
@@ -59,26 +57,7 @@ export class TiltifyAuthManager {
      * @async
      * @returns {Promise<AuthDetails | null>}
      */
-    static async getAuth(): Promise<AuthDetails | null> {
-        // Checks if the IntegrationManager has a getAuth Method and uses it if true.
-        let token: AuthDetails | null = null;
-        if (
-            "getAuth" in integrationManager &&
-            typeof integrationManager.getAuth === "function"
-        ) {
-            const authData: LinkData = await integrationManager.getAuth(
-                tiltifyIntegration().integrationId
-            );
-            if (authData === null) {
-                logger.debug("Tiltify : Couldn't retrieve a valid token. ");
-            } else {
-                if ("auth" in authData === false) {
-                    logger.warn("Tiltify : Invalid authentication data. ");
-                    throw new Error("Tiltify: Invalid authentication data.");
-                }
-                token = authData.auth;
-            }
-        } else {
+    static async getAuth(force: boolean = false): Promise<AuthDetails | null> {
             const integrationId: string = tiltifyIntegration().integrationId;
             const integration: Integration = integrationManager.getIntegrationById(integrationId);
             const integrationDefinition =
@@ -94,14 +73,15 @@ export class TiltifyAuthManager {
             let token: AuthDetails | null = null;
             if (integrationDefinition.linkType !== "auth") {
             logger.warn("Integration has the wrong link type!");
+            tiltifyIntegration().disconnect();
                 return null;
             }
             const authProvider: AuthProviderDefinition = integrationDefinition.authProviderDetails;
             token = integrationDefinition.auth ? TiltifyAuthManager.getAuthDetails(integrationDefinition.auth) : null;
 
-            if (token &&
-                integrationDefinition.authProviderDetails &&
-                TiltifyAuthManager.tokenExpired(token)) {
+        if (!authProvider) {
+            token = null;
+        } else if (token && (force || TiltifyAuthManager.tokenExpired(token))) {
 
                 let updatedToken: AuthDetails | null = null;
                 try {
@@ -114,14 +94,11 @@ export class TiltifyAuthManager {
                     tiltifyIntegration().emit("token-refreshed", {"integrationId": integrationId, "updatedToken": updatedToken});
                 }
                 token = updatedToken;
-            } else if (token && TiltifyAuthManager.tokenExpired(token)) {
-                token = null;
             }
 
             if (token == null) {
                 logger.warn("Could not refresh integration access token!");
                 tiltifyIntegration().disconnect();
-            }
         }
         return token;
     }
@@ -135,62 +112,6 @@ export class TiltifyAuthManager {
      */
     static tokenExpired(token: AuthDetails): boolean {
         return token.expires_at ? token.expires_at < new Date().getTime() : true;
-    }
-
-    /**
-     * Description placeholder
-     *
-     * @static
-     * @async
-     * @returns {Promise<AuthDetails | null>}
-     */
-    static async refreshToken(): Promise<AuthDetails | null> {
-        const integrationId: string = tiltifyIntegration().integrationId;
-        // Checks if the IntegrationManager has a refreshToken Method and uses it if true.
-        if (
-            "refreshToken" in integrationManager &&
-            typeof integrationManager.refreshToken === "function"
-        ) {
-            return await integrationManager.refreshToken("tiltify");
-        }
-        // If not, we have to implement it ourselves
-        try {
-            const integrationDefinition =
-                integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                    integrationId
-                );
-            if (integrationDefinition.linkType !== "auth") {
-                return null;
-            }
-            let auth = integrationDefinition.auth;
-            const authProvider = integrationDefinition.authProviderDetails;
-
-            if (auth != null) {
-                const updatedToken: AuthDetails = await tiltifyAPIController().refreshToken(auth, authProvider);
-
-                // Save the new token
-                const integration: Integration<
-                    TiltifySettings,
-                    TiltifyIntegrationEvents
-                > =
-                    integrationManager.getIntegrationById<TiltifySettings>(
-                        integrationId
-                    );
-                integrationManager.saveIntegrationAuth(
-                    integration,
-                    updatedToken
-                );
-                auth = updatedToken;
-                tiltifyIntegration().emit("token-refreshed", {"integrationId": integrationId, "updatedToken": updatedToken});
-                return updatedToken;
-            }
-        } catch (error) {
-            logger.error("Unable to refresh Tiltify token");
-            logger.debug(error);
-
-            tiltifyIntegration().disconnect();
-        }
-        return null;
     }
 
     /**
