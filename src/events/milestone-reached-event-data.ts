@@ -1,14 +1,44 @@
 import { TiltifyMilestone } from "@/types/milestone";
-import { CampaignEvent, TiltifyCampaignEventData } from "./campaign-event-data";
+import { CampaignEvent, TiltifyCampaignEventData, getManualMetadata as getCampaignManualMetadata } from "./campaign-event-data";
 import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
+import { FirebotEvent } from "@/@types/firebot-events";
+import { TILTIFY_MILESTONE_EVENT_ID } from "@/constants";
 
 export type TiltifyMilestoneReachedEventData = TiltifyCampaignEventData & {
     id: string;
     name: string;
     amount: number;
 };
-// TODO: Goal reached event !!
+
+const getManualMetadata: TiltifyMilestoneReachedEventData = {
+    ...getCampaignManualMetadata,
+    id: "",
+    name: "Awesome Milestone",
+    amount: 1000
+};
+
+function getMessage(eventData: TiltifyMilestoneReachedEventData) {
+    return `Milestone **${eventData.name}** reached in campaign ${eventData.campaignInfo.name}. 
+Threshold: $${eventData.amount}`;
+};
+
+export const TiltifyMilestoneReachedEvent: FirebotEvent = {
+    id: TILTIFY_MILESTONE_EVENT_ID,
+    name: "Milestone Reached",
+    description:
+        "When a Milestone of your Tiltify campaign has been reached.",
+    cached: false,
+    manualMetadata: getManualMetadata,
+    //@ts-ignore
+    isIntegration: true,
+    queued: true,
+    activityFeed: {
+        icon: "fad fa-heartbeat",
+        getMessage: getMessage
+    }
+};
+
 export class MilestoneReachedEvent {
     data: TiltifyMilestoneReachedEventData;
 

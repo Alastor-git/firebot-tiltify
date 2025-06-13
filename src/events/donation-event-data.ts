@@ -1,8 +1,10 @@
 import { TiltifyDonation } from "@/types/donation";
-import { CampaignEvent, TiltifyCampaignEventData } from "./campaign-event-data";
+import { CampaignEvent, TiltifyCampaignEventData, getManualMetadata as getCampaignManualMetadata } from "./campaign-event-data";
 import { TiltifyRewardClaim } from "@/types/campaign-reward";
 import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
+import { TILTIFY_DONATION_EVENT_ID } from "@/constants";
+import { FirebotEvent } from "@/@types/firebot-events";
 
 export type TiltifyRewardClaimEventData = {
     id: string;
@@ -19,6 +21,50 @@ export type TiltifyDonationEventData = TiltifyCampaignEventData & {
     comment: string;
     pollOptionId: string;
     challengeId: string;
+};
+
+const getManualMetadata: TiltifyDonationEventData = {
+    ...getCampaignManualMetadata,
+    from: "Tiltify",
+    donationAmount: 4.2,
+    rewards: [
+        {
+            id: "",
+            name: "Default reward",
+            quantity: 1,
+            cost: 5,
+            description: "This is a dummy reward"
+        }
+    ],
+    comment: "Thanks for the stream!",
+    pollOptionId: "",
+    challengeId: ""
+};
+
+function getMessage(eventData: TiltifyDonationEventData) {
+    return `**${eventData.from}** donated **$${eventData.donationAmount}** to ${eventData.campaignInfo.name}${
+        eventData.rewards.length === 0 ? "" :
+            eventData.rewards.length === 1 && eventData.rewards[0].quantity <= 1 ?
+                ` with reward *${eventData.rewards[0].name ? eventData.rewards[0].name : eventData.rewards[0].id}*` :
+                ` with rewards ${eventData.rewards.map(rewardClaim => 
+                    `${rewardClaim.quantity <= 1 ? '' : `${rewardClaim.quantity} x `}*${rewardClaim.name ? rewardClaim.name : rewardClaim.id}*`
+                ).join(', ')}`
+    }`;// TODO: Test redeeming several of a reward
+}
+
+export const TiltifyDonationEvent: FirebotEvent = {
+    id: TILTIFY_DONATION_EVENT_ID,
+    name: "Donation",
+    description: "When someone donates to you via Tiltify.",
+    cached: false,
+    manualMetadata: getManualMetadata,
+    //@ts-ignore
+    isIntegration: true,
+    queued: true,
+    activityFeed: {
+        icon: "fad fa-heart",
+        getMessage: getMessage
+    }
 };
 
 export class DonationEvent {

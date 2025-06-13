@@ -14,6 +14,19 @@ export type TiltifyCampaignEventData = {
     };
 };
 
+export const getManualMetadata: TiltifyCampaignEventData = {
+    campaignInfo: {
+        name: "GOTEL",
+        cause: "Lupus Foundation of America",
+        causeLegalName: "Lupus Foundation of America, Inc.",
+        fundraisingGoal: 1000,
+        originalGoal: 500,
+        supportingRaised: 500,
+        amountRaised: 1000,
+        totalRaised: 1500
+    }
+};
+
 export class CampaignEvent {
     data: TiltifyCampaignEventData;
 
