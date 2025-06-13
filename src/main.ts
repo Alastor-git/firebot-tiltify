@@ -13,6 +13,7 @@ import {
 import { tiltifyIntegration } from "./services";
 
 import * as packageInfo from "../package.json";
+import { TILTIFY_INTEGRATION_ID } from "./constants";
 
 const script: Firebot.CustomScript = {
     getScriptManifest: () => {
@@ -35,7 +36,7 @@ const script: Firebot.CustomScript = {
         // Create and Register the integration
         const integrationConfig: Integration<TiltifySettings> = {
             definition: integrationDefinition,
-            integration: tiltifyIntegration(integrationDefinition.id)
+            integration: tiltifyIntegration(TILTIFY_INTEGRATION_ID)
         };
         integrationManager.registerIntegration(integrationConfig);
 
@@ -44,7 +45,7 @@ const script: Firebot.CustomScript = {
     stop: () => {
         logger.info("Unloading Integration...");
 
-        tiltifyIntegration("tiltify").stop();
+        tiltifyIntegration().stop();
 
         logger.info("Integration unloaded");
     }

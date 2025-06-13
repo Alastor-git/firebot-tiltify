@@ -31,6 +31,7 @@ import {
 } from "@shared/firebot-modules";
 import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
 import { TiltifyAuthManager } from "./auth-manager";
+import { TILTIFY_INTEGRATION_ID } from "./constants";
 
 /**
  * Description placeholder
@@ -277,7 +278,7 @@ export class TiltifyIntegration
     public disconnect(): void {
         const integrationDefinition =
             integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                "tiltify"
+                TILTIFY_INTEGRATION_ID
             );
         // Disconnect
         this.connected = false;
@@ -324,7 +325,7 @@ export class TiltifyIntegration
     public static isIntegrationConfigValid(): boolean {
         const integrationDefinition =
             integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                "tiltify"
+                TILTIFY_INTEGRATION_ID
             );
 
         return (
@@ -459,7 +460,7 @@ export class TiltifyIntegration
  * @type {IntegrationDefinition<TiltifySettings>}
  */
 export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
-    id: "tiltify",
+    id: TILTIFY_INTEGRATION_ID,
     name: "Tiltify",
     description: "Tiltify donation events",
     connectionToggle: true,

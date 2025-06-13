@@ -10,6 +10,7 @@ import {
     TiltifySettings
 } from "@/tiltify-integration";
 import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types/types/modules/auth-manager";
+import { TILTIFY_INTEGRATION_ID } from "./constants";
 
 /**
  * Description placeholder
@@ -58,11 +59,10 @@ export class TiltifyAuthManager {
      * @returns {Promise<AuthDetails | null>}
      */
     static async getAuth(force: boolean = false): Promise<AuthDetails | null> {
-            const integrationId: string = tiltifyIntegration().integrationId;
-            const integration: Integration = integrationManager.getIntegrationById(integrationId);
+            const integration: Integration = integrationManager.getIntegrationById(TILTIFY_INTEGRATION_ID);
             const integrationDefinition =
                 integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                    integrationId
+                    TILTIFY_INTEGRATION_ID
                 );
             if (integration == null || !integrationDefinition.linked) {
             logger.warn("Integration is not linked!");
@@ -91,7 +91,7 @@ export class TiltifyAuthManager {
                 }
                 if (updatedToken != null) {
                     integrationManager.saveIntegrationAuth(integration, updatedToken);
-                    tiltifyIntegration().emit("token-refreshed", {"integrationId": integrationId, "updatedToken": updatedToken});
+                    tiltifyIntegration().emit("token-refreshed", {"integrationId": TILTIFY_INTEGRATION_ID, "updatedToken": updatedToken});
                 }
                 token = updatedToken;
             }

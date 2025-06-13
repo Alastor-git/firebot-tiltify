@@ -94,8 +94,8 @@ export class TiltifyPollService extends AbstractPollService {
      *
      * @protected
      * @async
-     * @param {string} campaignId 
-     * @returns {Promise<void>} 
+     * @param {string} campaignId
+     * @returns {Promise<void>}
      */
     protected async startPollActions(campaignId: string): Promise<void> {
         // TODO: Include here the actions you need to do only once before the poll starts
@@ -141,8 +141,8 @@ export class TiltifyPollService extends AbstractPollService {
      *
      * @protected
      * @async
-     * @param {string} campaignId 
-     * @returns {Promise<void>} 
+     * @param {string} campaignId
+     * @returns {Promise<void>}
      */
     protected async poll(campaignId: string): Promise<void> {
         // TODO : Poll here the data from Tiltify
