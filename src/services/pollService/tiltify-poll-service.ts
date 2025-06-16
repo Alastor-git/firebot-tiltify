@@ -13,6 +13,7 @@ import { TiltifyCampaignReward, TiltifyRewardClaim } from "@/types/campaign-rewa
 import {
     TILTIFY_DONATION_EVENT_ID,
     TILTIFY_EVENT_SOURCE_ID,
+    TILTIFY_INTEGRATION_ID,
     TILTIFY_MILESTONE_EVENT_ID
 } from "@/constants";
 
@@ -577,9 +578,11 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                 isConnected = true
             }
         }
-        if (isConnected === false) {
-            logger.info(`All pollers have been stopped. Disconnecting from Tiltify service.`)
-            tiltifyIntegration().disconnect();
+        if (isConnected === false && tiltifyIntegration().connected === true) {
+            logger.debug(`All pollers have been stopped. Disconnecting from Tiltify service.`)
+            tiltifyIntegration().connected = false;
+            logger.info("Tiltify Disconnected.");
+            tiltifyIntegration().emit("disconnected", TILTIFY_INTEGRATION_ID);
         }
     }
 }

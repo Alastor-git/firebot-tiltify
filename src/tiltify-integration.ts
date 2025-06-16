@@ -276,16 +276,12 @@ export class TiltifyIntegration
      * @public
      */
     public disconnect(): void {
-        const integrationDefinition =
-            integrationManager.getIntegrationDefinitionById<TiltifySettings>(
-                TILTIFY_INTEGRATION_ID
-            );
         // Disconnect
         this.connected = false;
 
         tiltifyPollService().stopAll();
-        logger.debug("Disconnecting Tiltify.");
-        this.emit("disconnected", integrationDefinition.id);
+        logger.info("Disconnecting Tiltify.");
+        this.emit("disconnected", TILTIFY_INTEGRATION_ID);
     }
 
     /**
@@ -304,12 +300,12 @@ export class TiltifyIntegration
     }
 
     public stop(): void {
+        this.connected = false;
         logger.info('Stopping integration services.');
 
         tiltifyPollService().stopAll();
 
         // Disconnect
-        this.connected = false;
         logger.debug("Disconnecting Tiltify.");
 
         logger.info('Integration services stopped.');
