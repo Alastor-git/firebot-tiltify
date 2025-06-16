@@ -172,6 +172,7 @@ export class TiltifyPollService extends AbstractPollService {
      */
     protected stopPollActions(campaignId: string): void {
         // TODO : Include here the actions you need to do only once after the poll ends
+        this.checkIfIntegrationDisconnected();
     }
 
     /**
@@ -566,6 +567,19 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                 eventDetails,
                 false
             );
+        }
+    }
+
+    public checkIfIntegrationDisconnected(): void {
+        let isConnected: boolean = false;
+        for(const campaignId of Object.keys(this.pollerStarted)) {
+            if (this.pollerStarted[campaignId] === true) {
+                isConnected = true
+            }
+        }
+        if (isConnected === false) {
+            logger.info(`All pollers have been stopped. Disconnecting from Tiltify service.`)
+            tiltifyIntegration().disconnect();
         }
     }
 }
