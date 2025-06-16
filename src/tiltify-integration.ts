@@ -174,9 +174,9 @@ export class TiltifyIntegration
             eventFilterManager.registerFilter(filter);
         }
 
-        integrationManager.on("token-refreshed", ({ integrationId }) => {
+        this.on("token-refreshed", ({ integrationId }) => {
             if (integrationId === this.integrationId) {
-                logger.debug("token refreshed");
+                logger.debug("Token refreshed");
             }
         });
 

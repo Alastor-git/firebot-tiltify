@@ -104,14 +104,14 @@ export class TiltifyAuthManager {
     }
 
     /**
-     * Description placeholder
+     * Returns true if the token has expired or will expire within the next second
      *
      * @static
      * @param {AuthDetails} token
      * @returns {boolean}
      */
     static tokenExpired(token: AuthDetails): boolean {
-        return token.expires_at ? token.expires_at < new Date().getTime() : true;
+        return token.expires_at ? token.expires_at - 1000 < new Date().getTime() : true;
     }
 
     /**

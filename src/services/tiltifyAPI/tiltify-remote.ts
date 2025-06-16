@@ -151,14 +151,14 @@ export class TiltifyAPIController {
         } = await this.client.GET("/api/public/current-user");
         if (!response.ok || !data?.data) {
             logger.warn(
-                `Token couldn't be validated or was invalid`
+                `Token validation request failed`
             );
             return false;
         }
 
         const userData: components["schemas"]["User"] = data.data;
         logger.debug(
-            `Token successfully validated for user ${userData.username}`
+            `Token validation request for user ${userData.username} successful`
         );
         return true;
     }
@@ -194,12 +194,12 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data) {
-            throw new Error(`Token couldn't be acquired`);
+            throw new Error(`Token acquisition request failed`);
         }
         const token: AuthDetails = TiltifyAuthManager.getAuthDetails(
             data as RawTiltifyToken
         );
-        logger.debug(`Token successfully acquired`);
+        logger.debug(`Token acquisition request successful`);
         return token;
     }
 
@@ -232,12 +232,12 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data) {
-            throw new Error(`Tiltify token couldn't be refreshed`);
+            throw new Error(`Token refresh request failed`);
         }
         const token: AuthDetails = TiltifyAuthManager.getAuthDetails(
             data as RawTiltifyToken
         );
-        logger.debug(`Token successfully refreshed`);
+        logger.debug(`Token refresh request successful`);
         return token;
     }
 
