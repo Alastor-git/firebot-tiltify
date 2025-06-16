@@ -15,6 +15,7 @@ import { AuthDetails } from "@crowbartools/firebot-custom-scripts-types";
 import { TiltifyTarget } from "@/types/target";
 import { TiltifyAuthManager } from "@/auth-manager";
 import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types/types/modules/auth-manager";
+import { TiltifyAPIError } from "@/shared/errors";
 
 /**
  * Description placeholder
@@ -103,9 +104,8 @@ export class TiltifyAPIController {
                 const authRes: AuthDetails | null =
                     await TiltifyAuthManager.getAuth();
                 if (!authRes) {
-                    throw new Error(
-                        "No valid Auth token available to make the API request"
-                    );
+                    // Error 498	Token expired/invalid
+                    throw new TiltifyAPIError(498, `No valid Auth token available to make the API request`);
                 }
                 const accessToken = authRes.access_token;
 
@@ -170,7 +170,7 @@ export class TiltifyAPIController {
      * @param {AuthProviderDefinition} authProvider
      * @param {string} redirectUri
      * @returns {Promise<AuthDetails>}
-     * @throws {Error} if Token can't be acquired
+     * @throws {TiltifyAPIError} if Token can't be acquired
      */
     async createToken(
         authProvider: AuthProviderDefinition,
@@ -194,7 +194,8 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data) {
-            throw new Error(`Token acquisition request failed`);
+            // Error 498	Token expired/invalid
+            throw new TiltifyAPIError(498, `Token acquisition request failed`);
         }
         const token: AuthDetails = TiltifyAuthManager.getAuthDetails(
             data as RawTiltifyToken
@@ -210,7 +211,7 @@ export class TiltifyAPIController {
      * @param {AuthDetails} expiredToken
      * @param {AuthProviderDefinition} authProvider
      * @returns {Promise<AuthDetails>}
-     * @throws {Error} if Token can't be refreshed
+     * @throws {TiltifyAPIError} if Token can't be refreshed
      */
     async refreshToken(
         expiredToken: AuthDetails,
@@ -232,7 +233,8 @@ export class TiltifyAPIController {
             }
         );
         if (!response.ok || !data) {
-            throw new Error(`Token refresh request failed`);
+            // Error 498	Token expired/invalid
+            throw new TiltifyAPIError(498, `Token refresh request failed`);
         }
         const token: AuthDetails = TiltifyAuthManager.getAuthDetails(
             data as RawTiltifyToken
@@ -247,20 +249,24 @@ export class TiltifyAPIController {
      * @async
      * @param {string} campaignId
      * @returns {Promise<TiltifyCampaign>}
-     * @throws {Error} if no Token or request rejected
+     * @throws {TiltifyAPIError} if no Token or request rejected
      */
     async getCampaign(campaignId: string): Promise<TiltifyCampaign> {
         const {
             response,
-            data // only present if 2XX response
+            data, // only present if 2XX response
+            error // only present if not 2XX response
             // eslint-disable-next-line new-cap
         } = await this.client.GET("/api/public/campaigns/{campaign_id}", {
             params: { path: { campaign_id: campaignId } } // eslint-disable-line camelcase
         });
-        if (!response.ok || !data?.data) {
-            throw new Error(
-                `Campaign ${campaignId} data couldn't be retrieved`
-            );
+
+        if (error?.error) {
+            throw new TiltifyAPIError(error.error.status, `Campaign ${campaignId} data couldn't be retrieved: ${error.error.message}`)
+        } else if (!response.ok) {
+            throw new TiltifyAPIError(response.status, `Campaign ${campaignId} data couldn't be retrieved: ${response.statusText}`)
+        } else if (!data?.data) {
+            throw new TiltifyAPIError(410, `Campaign ${campaignId} returned no data`)
         }
 
         const campaignData: components["schemas"]["Campaign"] = data.data;
@@ -274,7 +280,7 @@ export class TiltifyAPIController {
      * @param {string} campaignId
      * @param {(string | null)} [completedAfter=null]
      * @returns {Promise<TiltifyDonation[]>}
-     * @throws {Error} if no Token or request rejected
+     * @throws {TiltifyAPIError} if no Token or request rejected
      */
     async getCampaignDonations(
         campaignId: string,
@@ -282,7 +288,8 @@ export class TiltifyAPIController {
     ): Promise<TiltifyDonation[]> {
         const {
             response,
-            data // only present if 2XX response
+            data, // only present if 2XX response
+            error // only present if not 2XX response
             // eslint-disable-next-line new-cap
         } = await this.client.GET(
             "/api/public/campaigns/{campaign_id}/donations",
@@ -295,10 +302,13 @@ export class TiltifyAPIController {
                 }
             }
         );
-        if (!response.ok || !data?.data) {
-            throw new Error(
-                `Donations for campaign ${campaignId} couldn't be retrieved`
-            );
+
+        if (error?.error) {
+            throw new TiltifyAPIError(error.error.status, `Donations for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+        } else if (!response.ok) {
+            throw new TiltifyAPIError(response.status, `Donations for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+        } else if (!data?.data) {
+            throw new TiltifyAPIError(410, `Donations for campaign ${campaignId} returned no data`)
         }
 
         const donationsData: components["schemas"]["Donation"][] = data.data;
@@ -311,20 +321,26 @@ export class TiltifyAPIController {
      * @async
      * @param {string} causeId
      * @returns {Promise<TiltifyCause>}
-     * @throws {Error} if no Token or request rejected
+     * @throws {TiltifyAPIError} if no Token or request rejected
      */
     async getCause(causeId: string): Promise<TiltifyCause> {
         const {
             response,
-            data // only present if 2XX response
+            data, // only present if 2XX response
+            error // only present if not 2XX response
             // eslint-disable-next-line new-cap
         } = await this.client.GET("/api/public/causes/{cause_id}", {
             params: {
                 path: { cause_id: causeId } // eslint-disable-line camelcase
             }
         });
-        if (!response.ok || !data?.data) {
-            throw new Error(`Cause ${causeId} data couldn't be retrieved`);
+
+        if (error?.error) {
+            throw new TiltifyAPIError(error.error.status, `Cause ${causeId} data couldn't be retrieved: ${error.error.message}`)
+        } else if (!response.ok) {
+            throw new TiltifyAPIError(response.status, `Cause ${causeId} data couldn't be retrieved: ${response.statusText}`)
+        } else if (!data?.data) {
+            throw new TiltifyAPIError(410, `Cause ${causeId} returned no data`)
         }
 
         const causeData: components["schemas"]["Cause"] = data.data;
@@ -337,12 +353,13 @@ export class TiltifyAPIController {
      * @async
      * @param {string} campaignId
      * @returns {Promise<TiltifyCampaignReward[]>}
-     * @throws {Error} if no Token or request rejected
+     * @throws {TiltifyAPIError} if no Token or request rejected
      */
     async getRewards(campaignId: string): Promise<TiltifyCampaignReward[]> {
         const {
             response,
-            data // only present if 2XX response
+            data, // only present if 2XX response
+            error // only present if not 2XX response
             // eslint-disable-next-line new-cap
         } = await this.client.GET(
             "/api/public/campaigns/{campaign_id}/rewards",
@@ -352,10 +369,13 @@ export class TiltifyAPIController {
                 }
             }
         );
-        if (!response.ok || !data?.data) {
-            throw new Error(
-                `Rewards for campaign ${campaignId} couldn't be retrieved`
-            );
+
+        if (error?.error) {
+            throw new TiltifyAPIError(error.error.status, `Rewards for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+        } else if (!response.ok) {
+            throw new TiltifyAPIError(response.status, `Rewards for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+        } else if (!data?.data) {
+            throw new TiltifyAPIError(410, `Rewards for campaign ${campaignId} returned no data`)
         }
 
         const rewardsData: components["schemas"]["Reward"][] = data.data;
@@ -368,22 +388,26 @@ export class TiltifyAPIController {
      * @async
      * @param {string} campaignId
      * @returns {Promise<TiltifyPoll[]>}
-     * @throws {Error} if no Token or request rejected
+     * @throws {TiltifyAPIError} if no Token or request rejected
      */
     async getPollOptions(campaignId: string): Promise<TiltifyPoll[]> {
         const {
             response,
-            data // only present if 2XX response
+            data, // only present if 2XX response
+            error // only present if not 2XX response
             // eslint-disable-next-line new-cap
         } = await this.client.GET("/api/public/campaigns/{campaign_id}/polls", {
             params: {
                 path: { campaign_id: campaignId } // eslint-disable-line camelcase
             }
         });
-        if (!response.ok || !data?.data) {
-            throw new Error(
-                `Polls for campaign ${campaignId} couldn't be retrieved`
-            );
+
+        if (error?.error) {
+            throw new TiltifyAPIError(error.error.status, `Polls for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+        } else if (!response.ok) {
+            throw new TiltifyAPIError(response.status, `Polls for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+        } else if (!data?.data) {
+            throw new TiltifyAPIError(410, `Polls for campaign ${campaignId} returned no data`)
         }
 
         const pollsData: components["schemas"]["Poll"][] = data.data;
@@ -396,12 +420,13 @@ export class TiltifyAPIController {
      * @async
      * @param {string} campaignId
      * @returns {Promise<TiltifyTarget[]>}
-     * @throws {Error} if no Token or request rejected
+     * @throws {TiltifyAPIError} if no Token or request rejected
      */
     async getTargets(campaignId: string): Promise<TiltifyTarget[]> {
         const {
             response,
-            data // only present if 2XX response
+            data, // only present if 2XX response
+            error // only present if not 2XX response
             // eslint-disable-next-line new-cap
         } = await this.client.GET(
             "/api/public/campaigns/{campaign_id}/targets",
@@ -411,10 +436,13 @@ export class TiltifyAPIController {
                 }
             }
         );
-        if (!response.ok || !data?.data) {
-            throw new Error(
-                `Targets for campaign ${campaignId} couldn't be retrieved`
-            );
+
+        if (error?.error) {
+            throw new TiltifyAPIError(error.error.status, `Targets for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+        } else if (!response.ok) {
+            throw new TiltifyAPIError(response.status, `Targets for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+        } else if (!data?.data) {
+            throw new TiltifyAPIError(410, `Targets for campaign ${campaignId} returned no data`)
         }
 
         const targetsData: components["schemas"]["Target"][] = data.data;
@@ -427,12 +455,13 @@ export class TiltifyAPIController {
      * @async
      * @param {string} campaignId
      * @returns {Promise<TiltifyMilestone[]>}
-     * @throws {Error} if no Token or request rejected
+     * @throws {TiltifyAPIError} if no Token or request rejected
      */
     async getMilestones(campaignId: string): Promise<TiltifyMilestone[]> {
         const {
             response,
-            data // only present if 2XX response
+            data, // only present if 2XX response
+            error // only present if not 2XX response
             // eslint-disable-next-line new-cap
         } = await this.client.GET(
             "/api/public/campaigns/{campaign_id}/milestones",
@@ -442,10 +471,13 @@ export class TiltifyAPIController {
                 }
             }
         );
-        if (!response.ok || !data?.data) {
-            throw new Error(
-                `Milestones for campaign ${campaignId} couldn't be retrieved`
-            );
+
+        if (error?.error) {
+            throw new TiltifyAPIError(error.error.status, `Milestones for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+        } else if (!response.ok) {
+            throw new TiltifyAPIError(response.status, `Milestones for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+        } else if (!data?.data) {
+            throw new TiltifyAPIError(410, `Milestones for campaign ${campaignId} returned no data`)
         }
 
         const milestonesData: components["schemas"]["Milestone"][] = data.data;
