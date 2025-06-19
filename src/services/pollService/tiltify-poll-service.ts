@@ -27,6 +27,7 @@ import { TiltifyDonation } from "@/types/donation";
 import { CampaignEvent } from "@/events/campaign-event-data";
 import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
+import { TiltifyAPIError } from "@/shared/errors";
 
 /**
  * Description placeholder
@@ -65,6 +66,9 @@ export class TiltifyPollService extends AbstractPollService {
      * @type {{ [campaignId: string]: boolean }}
      */
     declare protected pollerStarted: { [campaignId: string]: boolean };
+    protected shutdown: boolean = false;
+    protected retry: boolean = false;
+    protected retryDelay: number = 0;
 
     /**
      * Creates an instance of TiltifyPollService.
@@ -149,19 +153,55 @@ export class TiltifyPollService extends AbstractPollService {
         // TODO : Poll here the data from Tiltify
 
         // FIXME: Auto reconnecting if disconnected ? How does Firebot handle this ?
-
         try {
             // Check for new donations
             await this.updateDonations(campaignId);
 
             // Check for milestones reached
             await this.updateMilestones(campaignId);
+
+            // After a success
+            this.shutdown = false;
+            this.retry = false;
+            this.retryDelay = 0;
         } catch (error) {
-            logger.debug(
-                `Stopped polling ${campaignId} because of an error.`
-            );
-            logger.debug(error);
-            this.stop(campaignId);
+            if (error instanceof TiltifyAPIError) {
+                switch (error.errorCode) {
+                    case 502: // Bad Gateway or Proxy Error
+                        this.retryDelay = this.retryDelay === 0 ? 1 : this.retryDelay * 2;
+                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`)
+                        if (this.retryDelay < 100) {
+                            this.retry = true;
+                            logger.debug(`Retrying after ${this.retryDelay}s`)
+                        } else {
+                            this.shutdown = true;
+                            logger.debug(`Shutting down after too many errors.`)
+                        }
+                    case 401: // Unauthorized
+                        this.retryDelay = 0;
+                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`)
+                        if (this.retry) {
+                            this.shutdown = true;
+                            logger.debug(`Shutting down after a second failure.`)
+                        } else {
+                            this.retry = true;
+                            logger.debug(`Trying once to reconnect.`)
+                        }
+                } 
+            } else {
+                this.shutdown = true
+                logger.debug(
+                    `Stop polling ${campaignId} because of an error.`
+                );
+                logger.debug(error);
+            }
+
+
+            if (this.shutdown) {
+                this.stop(campaignId);
+            }
+
+
         }
     }
 
