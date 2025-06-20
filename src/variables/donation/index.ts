@@ -1,4 +1,12 @@
 export { TiltifyDonationFromVariable } from "./donation-from";
 export { TiltifyDonationAmountVariable } from "./donation-amount";
-export { TiltifyDonationRewardIdsVariable } from "./donation-reward-ids";
 export { TiltifyDonationCommentVariable } from "./donation-comment";
+export { TiltifyDonationRewardIdsVariable } from "./donation-reward-ids";
+export { TiltifyDonationRewardNameVariable } from "./donation-reward-name";
+export { TiltifyDonationRewardDescriptionVariable } from "./donation-reward-description";
+export { TiltifyDonationRewardPriceVariable } from "./donation-reward-price";
+export { TiltifyDonationRewardQuantityAvailableVariable } from "./donation-reward-quantity-available";
+export { TiltifyDonationRewardQuantityRedeemedVariable } from "./donation-reward-quantity-redeemed";
+export { TiltifyDonationRewardQuantityRemainingVariable } from "./donation-reward-quantity-remaining";
+export { TiltifyDonationRewardCountVariable } from "./donation-reward-count";
+export { TiltifyDonationRewardsVariable } from "./donation-rewards";

@@ -488,7 +488,7 @@ export class TiltifyPollService extends AbstractPollService {
         logger.info(`Donation: 
 From ${eventDetails.from} for $${eventDetails.donationAmount}. 
 Total raised : $${eventDetails.campaignInfo.amountRaised}
-Rewards: ${eventDetails.rewards.map(rewardClaim => `${rewardClaim.quantity} * ${rewardClaim.name ?? rewardClaim.id}`).join(", ")}
+Rewards: ${eventDetails.rewards.map(rewardClaim => `${rewardClaim.quantityRedeemed} * ${rewardClaim.name ?? rewardClaim.id}`).join(", ")}
 Campaign : ${eventDetails.campaignInfo.name}
 Cause : ${eventDetails.campaignInfo.cause}`);
         // Trigger the event

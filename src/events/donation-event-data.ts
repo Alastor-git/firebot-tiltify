@@ -9,7 +9,9 @@ import { FirebotEvent } from "@/@types/firebot-events";
 export type TiltifyRewardClaimEventData = {
     id: string;
     name: string;
-    quantity: number;
+    quantityAvailable: number | null;
+    quantityRedeemed: number;
+    quantityRemaining: number | null;
     cost: number;
     description: string;
 };
@@ -31,7 +33,9 @@ const getManualMetadata: TiltifyDonationEventData = {
         {
             id: "",
             name: "Default reward",
-            quantity: 1,
+            quantityAvailable: 10,
+            quantityRedeemed: 1,
+            quantityRemaining: 5,
             cost: 5,
             description: "This is a dummy reward"
         }
@@ -44,10 +48,10 @@ const getManualMetadata: TiltifyDonationEventData = {
 function getMessage(eventData: TiltifyDonationEventData) {
     return `**${eventData.from}** donated **$${eventData.donationAmount}** to ${eventData.campaignInfo.name}${
         eventData.rewards.length === 0 ? "" :
-            eventData.rewards.length === 1 && eventData.rewards[0].quantity <= 1 ?
+            eventData.rewards.length === 1 && eventData.rewards[0].quantityRedeemed <= 1 ?
                 ` with reward *${eventData.rewards[0].name ? eventData.rewards[0].name : eventData.rewards[0].id}*` :
-                ` with rewards ${eventData.rewards.map(rewardClaim => 
-                    `${rewardClaim.quantity <= 1 ? '' : `${rewardClaim.quantity} x `}*${rewardClaim.name ? rewardClaim.name : rewardClaim.id}*`
+                ` with rewards ${eventData.rewards.map(rewardClaim =>
+                    `${rewardClaim.quantityRedeemed <= 1 ? '' : `${rewardClaim.quantityRedeemed} x `}*${rewardClaim.name ? rewardClaim.name : rewardClaim.id}*`
                 ).join(', ')}`
     }`;// TODO: Test redeeming several of a reward
 }
@@ -106,7 +110,9 @@ export class DonationEvent {
                 const rewardClaimEventData: TiltifyRewardClaimEventData = {
                     id: rewardClaim.reward?.id ?? "",
                     name: rewardClaim.reward?.name ?? "",
-                    quantity: rewardClaim.quantity ?? 1,
+                    quantityAvailable: rewardClaim.reward?.quantity ?? null,
+                    quantityRedeemed: rewardClaim.quantity ?? 1,
+                    quantityRemaining: rewardClaim.reward?.quantity_remaining ?? null,
                     cost: Number(rewardClaim.reward?.amount?.value ?? 0),
                     description: rewardClaim.reward?.description ?? ""
                 };
