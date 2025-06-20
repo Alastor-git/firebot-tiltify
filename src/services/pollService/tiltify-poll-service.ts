@@ -45,7 +45,7 @@ export class TiltifyPollService extends AbstractPollService {
      * @static
      * @type {TiltifyPollService}
      */
-    private static _instance: TiltifyPollService; // eslint-disable-line no-use-before-define
+    private static _instance: TiltifyPollService;
 
     /**
      * Description placeholder
@@ -66,9 +66,6 @@ export class TiltifyPollService extends AbstractPollService {
      * @type {{ [campaignId: string]: boolean }}
      */
     declare protected pollerStarted: { [campaignId: string]: boolean };
-    protected shutdown: boolean = false;
-    protected retry: boolean = false;
-    protected retryDelay: number = 0;
 
     /**
      * Creates an instance of TiltifyPollService.
@@ -85,7 +82,7 @@ export class TiltifyPollService extends AbstractPollService {
      *
      * @public
      * @static
-     * @returns {TiltifyPollService} 
+     * @returns {TiltifyPollService}
      */
     public static instance(): TiltifyPollService {
         return (
@@ -151,8 +148,6 @@ export class TiltifyPollService extends AbstractPollService {
      */
     protected async poll(campaignId: string): Promise<void> {
         // TODO : Poll here the data from Tiltify
-
-        // FIXME: Auto reconnecting if disconnected ? How does Firebot handle this ?
         try {
             // Check for new donations
             await this.updateDonations(campaignId);
@@ -161,47 +156,33 @@ export class TiltifyPollService extends AbstractPollService {
             await this.updateMilestones(campaignId);
 
             // After a success
-            this.shutdown = false;
-            this.retry = false;
-            this.retryDelay = 0;
+            this.pollingSuccess(campaignId);
         } catch (error) {
+            const pollerStatus = this.pollerStatus[campaignId];
             if (error instanceof TiltifyAPIError) {
                 switch (error.errorCode) {
-                    case 502: // Bad Gateway or Proxy Error
-                        this.retryDelay = this.retryDelay === 0 ? 1 : this.retryDelay * 2;
-                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`)
-                        if (this.retryDelay < 100) {
-                            this.retry = true;
-                            logger.debug(`Retrying after ${this.retryDelay}s`)
-                        } else {
-                            this.shutdown = true;
-                            logger.debug(`Shutting down after too many errors.`)
-                        }
                     case 401: // Unauthorized
-                        this.retryDelay = 0;
-                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`)
-                        if (this.retry) {
-                            this.shutdown = true;
-                            logger.debug(`Shutting down after a second failure.`)
-                        } else {
-                            this.retry = true;
-                            logger.debug(`Trying once to reconnect.`)
+                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`);
+                        if (pollerStatus.retryMode === "None" || pollerStatus.retryMode === "Backoff") {
+                            pollerStatus.retryMode = "Once";
+                            logger.info(`Polling of campaign ${campaignId} has failed. Trying to reconnect once.`);
                         }
-                } 
+                        break;
+                    case 502: // Bad Gateway or Proxy Error
+                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`);
+                        if (pollerStatus.retryMode === "None") {
+                            pollerStatus.retryMode = "Backoff";
+                            logger.info(`Trying to reconnect campaign ${campaignId} after a delay`);
+                        }
+                        break;
+                }
             } else {
-                this.shutdown = true
-                logger.debug(
+                this.pollerStatus[campaignId].retryMode = "Shutdown";
+                logger.info(
                     `Stop polling ${campaignId} because of an error.`
                 );
                 logger.debug(error);
             }
-
-
-            if (this.shutdown) {
-                this.stop(campaignId);
-            }
-
-
         }
     }
 
@@ -209,7 +190,7 @@ export class TiltifyPollService extends AbstractPollService {
      * Description placeholder
      *
      * @protected
-     * @param {string} campaignId 
+     * @param {string} campaignId
      */
     protected stopPollActions(campaignId: string): void {
         // TODO : Include here the actions you need to do only once after the poll ends
@@ -615,11 +596,11 @@ Cause: ${eventDetails.campaignInfo.cause}`);
         let isConnected: boolean = false;
         for(const campaignId of Object.keys(this.pollerStarted)) {
             if (this.pollerStarted[campaignId] === true) {
-                isConnected = true
+                isConnected = true;
             }
         }
         if (isConnected === false && tiltifyIntegration().connected === true) {
-            logger.debug(`All pollers have been stopped. Disconnecting from Tiltify service.`)
+            logger.debug(`All pollers have been stopped. Disconnecting from Tiltify service.`);
             tiltifyIntegration().connected = false;
             logger.info("Tiltify Disconnected.");
             tiltifyIntegration().emit("disconnected", TILTIFY_INTEGRATION_ID);

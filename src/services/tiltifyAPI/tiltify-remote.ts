@@ -43,7 +43,7 @@ export class TiltifyAPIController {
      * @static
      * @type {TiltifyAPIController}
      */
-    private static _instance: TiltifyAPIController; // eslint-disable-line no-use-before-define
+    private static _instance: TiltifyAPIController;
 
     /**
      * Stores the openapi-fetch client that performs communication
@@ -262,11 +262,11 @@ export class TiltifyAPIController {
         });
 
         if (error?.error) {
-            throw new TiltifyAPIError(error.error.status, `Campaign ${campaignId} data couldn't be retrieved: ${error.error.message}`)
+            throw new TiltifyAPIError(error.error.status, `Campaign ${campaignId} data couldn't be retrieved: ${error.error.message}`);
         } else if (!response.ok) {
-            throw new TiltifyAPIError(response.status, `Campaign ${campaignId} data couldn't be retrieved: ${response.statusText}`)
+            throw new TiltifyAPIError(response.status, `Campaign ${campaignId} data couldn't be retrieved: ${response.statusText}`);
         } else if (!data?.data) {
-            throw new TiltifyAPIError(410, `Campaign ${campaignId} returned no data`)
+            throw new TiltifyAPIError(410, `Campaign ${campaignId} returned no data`);
         }
 
         const campaignData: components["schemas"]["Campaign"] = data.data;
@@ -304,11 +304,11 @@ export class TiltifyAPIController {
         );
 
         if (error?.error) {
-            throw new TiltifyAPIError(error.error.status, `Donations for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+            throw new TiltifyAPIError(error.error.status, `Donations for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`);
         } else if (!response.ok) {
-            throw new TiltifyAPIError(response.status, `Donations for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+            throw new TiltifyAPIError(response.status, `Donations for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`);
         } else if (!data?.data) {
-            throw new TiltifyAPIError(410, `Donations for campaign ${campaignId} returned no data`)
+            throw new TiltifyAPIError(410, `Donations for campaign ${campaignId} returned no data`);
         }
 
         const donationsData: components["schemas"]["Donation"][] = data.data;
@@ -336,11 +336,11 @@ export class TiltifyAPIController {
         });
 
         if (error?.error) {
-            throw new TiltifyAPIError(error.error.status, `Cause ${causeId} data couldn't be retrieved: ${error.error.message}`)
+            throw new TiltifyAPIError(error.error.status, `Cause ${causeId} data couldn't be retrieved: ${error.error.message}`);
         } else if (!response.ok) {
-            throw new TiltifyAPIError(response.status, `Cause ${causeId} data couldn't be retrieved: ${response.statusText}`)
+            throw new TiltifyAPIError(response.status, `Cause ${causeId} data couldn't be retrieved: ${response.statusText}`);
         } else if (!data?.data) {
-            throw new TiltifyAPIError(410, `Cause ${causeId} returned no data`)
+            throw new TiltifyAPIError(410, `Cause ${causeId} returned no data`);
         }
 
         const causeData: components["schemas"]["Cause"] = data.data;
@@ -371,11 +371,11 @@ export class TiltifyAPIController {
         );
 
         if (error?.error) {
-            throw new TiltifyAPIError(error.error.status, `Rewards for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+            throw new TiltifyAPIError(error.error.status, `Rewards for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`);
         } else if (!response.ok) {
-            throw new TiltifyAPIError(response.status, `Rewards for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+            throw new TiltifyAPIError(response.status, `Rewards for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`);
         } else if (!data?.data) {
-            throw new TiltifyAPIError(410, `Rewards for campaign ${campaignId} returned no data`)
+            throw new TiltifyAPIError(410, `Rewards for campaign ${campaignId} returned no data`);
         }
 
         const rewardsData: components["schemas"]["Reward"][] = data.data;
@@ -403,11 +403,11 @@ export class TiltifyAPIController {
         });
 
         if (error?.error) {
-            throw new TiltifyAPIError(error.error.status, `Polls for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+            throw new TiltifyAPIError(error.error.status, `Polls for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`);
         } else if (!response.ok) {
-            throw new TiltifyAPIError(response.status, `Polls for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+            throw new TiltifyAPIError(response.status, `Polls for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`);
         } else if (!data?.data) {
-            throw new TiltifyAPIError(410, `Polls for campaign ${campaignId} returned no data`)
+            throw new TiltifyAPIError(410, `Polls for campaign ${campaignId} returned no data`);
         }
 
         const pollsData: components["schemas"]["Poll"][] = data.data;
@@ -438,11 +438,11 @@ export class TiltifyAPIController {
         );
 
         if (error?.error) {
-            throw new TiltifyAPIError(error.error.status, `Targets for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+            throw new TiltifyAPIError(error.error.status, `Targets for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`);
         } else if (!response.ok) {
-            throw new TiltifyAPIError(response.status, `Targets for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+            throw new TiltifyAPIError(response.status, `Targets for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`);
         } else if (!data?.data) {
-            throw new TiltifyAPIError(410, `Targets for campaign ${campaignId} returned no data`)
+            throw new TiltifyAPIError(410, `Targets for campaign ${campaignId} returned no data`);
         }
 
         const targetsData: components["schemas"]["Target"][] = data.data;
@@ -473,11 +473,11 @@ export class TiltifyAPIController {
         );
 
         if (error?.error) {
-            throw new TiltifyAPIError(error.error.status, `Milestones for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`)
+            throw new TiltifyAPIError(error.error.status, `Milestones for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`);
         } else if (!response.ok) {
-            throw new TiltifyAPIError(response.status, `Milestones for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`)
+            throw new TiltifyAPIError(response.status, `Milestones for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`);
         } else if (!data?.data) {
-            throw new TiltifyAPIError(410, `Milestones for campaign ${campaignId} returned no data`)
+            throw new TiltifyAPIError(410, `Milestones for campaign ${campaignId} returned no data`);
         }
 
         const milestonesData: components["schemas"]["Milestone"][] = data.data;

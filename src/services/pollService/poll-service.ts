@@ -6,12 +6,22 @@ interface PollingEvents {
     "polling-stopped": (campaignId: string) => void;
 }
 
+type PollerStatus = {
+    lastPollingTimestamp: number;
+    retryAttempt: number;
+    retryMode: "None" | "Backoff" | "Once" | "Shutdown";
+};
+
 export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
     private poller: { [campaignId: string]: NodeJS.Timeout } = {};
     private pollingInterval: { [campaignId: string]: number } = {};
     protected pollerData: { [campaignId: string]: unknown } = {};
     protected pollerStarted: { [campaignId: string]: boolean } = {};
-    private defaultPollingInterval = 15000;
+    protected pollerStatus: { [campaignId: string]: PollerStatus } = {};
+    private defaultPollingInterval = 15000; // Default polling interval in ms
+    protected maxRetries: number = 12; // Maximum number of allowed retries
+    protected maxDelay: number = 900000; // Maximum retry delay in ms
+    protected initalDelay: number = 2000; // Initial retry delay in ms
 
     public setPollingInterval(
         campaignId: string,
@@ -55,14 +65,54 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
         }
 
         this.poller[campaignId] = setInterval(
-            () => this.poll(campaignId),
+            () => this.abstractPoll(campaignId),
             interval
         );
+        this.pollerStatus[campaignId] = {
+            lastPollingTimestamp: 0,
+            retryAttempt: 0,
+            retryMode: "None"
+        };
 
         logger.debug(
             `Started polling Tiltify campaign ${campaignId}.`
         );
         this.emit("polling-started", campaignId);
+    }
+
+    private abstractPoll(campaignId: string): void {
+        const pollerStatus = this.pollerStatus[campaignId];
+        // Check if we exceeded the max number of retries
+        if (pollerStatus.retryMode === "Once" && pollerStatus.retryAttempt >= 1) {
+            pollerStatus.retryMode = "Shutdown";
+            logger.info(`Shutting down campaign ${campaignId} after failing to poll twice.`);
+        } else if (pollerStatus.retryMode === "Backoff" && pollerStatus.retryAttempt > this.maxRetries) {
+            pollerStatus.retryMode = "Shutdown";
+            logger.info(`Shutting down campaign ${campaignId} after too many errors.`);
+        }
+
+        // Shut down the campaign if required
+        if (pollerStatus.retryMode === "Shutdown") {
+            this.stop(campaignId);
+            return;
+        }
+
+        // If we're in a retry mode, wait for the appropriate delay before attempting to poll again
+        if (pollerStatus.retryMode !== "None") {
+            const retryDelay: number = Math.max(this.initalDelay * 2 ** pollerStatus.retryAttempt, this.maxDelay);
+            if (pollerStatus.lastPollingTimestamp + retryDelay > Date.now()) {
+                return;
+            }
+            logger.debug(`Polling retry #${pollerStatus.retryAttempt} happening after ${retryDelay / 1000}s`);
+            pollerStatus.retryAttempt++;
+        }
+        this.poll(campaignId);
+        pollerStatus.lastPollingTimestamp = Date.now();
+    }
+
+    protected pollingSuccess(campaignId: string): void {
+        this.pollerStatus[campaignId].retryMode = "None";
+        this.pollerStatus[campaignId].retryAttempt = 0;
     }
 
     public stop(campaignId: string) {
@@ -73,6 +123,7 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
         delete this.pollingInterval[campaignId];
         delete this.pollerStarted[campaignId];
         delete this.pollerData[campaignId];
+        delete this.pollerStatus[campaignId];
 
         logger.debug(
             `Stopped polling Tiltify campaing ${campaignId}.`
