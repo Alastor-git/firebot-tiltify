@@ -161,6 +161,16 @@ export class TiltifyPollService extends AbstractPollService {
             const pollerStatus = this.pollerStatus[campaignId];
             if (error instanceof TiltifyAPIError) {
                 switch (error.errorCode) {
+                    case 422: // Unprocessible entity
+                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`);
+                        pollerStatus.retryMode = "Shutdown";
+                        logger.info(`Internal Tiltify error while prossessing campaign ${campaignId} data.`);
+                        break;
+                    case 404: // Ressource Not Found
+                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`);
+                        pollerStatus.retryMode = "Shutdown";
+                        logger.info(`Campaign ${campaignId} cound not be found.`);
+                        break;
                     case 401: // Unauthorized
                         logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`);
                         if (pollerStatus.retryMode === "None" || pollerStatus.retryMode === "Backoff") {
