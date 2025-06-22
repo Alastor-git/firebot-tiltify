@@ -8,7 +8,7 @@ import { TiltifyDonationEventData, TiltifyRewardClaimEventData } from "@/events/
 
 export const TiltifyDonationRewardsVariable: ReplaceVariable = {
     definition: {
-        handle: "tiltifyDonationRewards",
+        handle: "tiltifyDonationRewards[index?, property?]",
         description: "Access the properties of rewards associated with a Tiltify donation",
         examples: [
             {

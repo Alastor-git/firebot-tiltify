@@ -8,7 +8,7 @@ import { TiltifyDonationEventData } from "@/events/donation-event-data";
 
 export const TiltifyDonationRewardQuantityRemainingVariable: ReplaceVariable = {
     definition: {
-        handle: "tiltifyDonationRewardQuantityRemaining",
+        handle: "tiltifyDonationRewardQuantityRemaining[id]",
         description: "The quantity of the reward with the matching Id that remains after the current redemption. Returns 0 if no limit has been set. ",
         triggers: {
             event: [`${TILTIFY_EVENT_SOURCE_ID}:${TILTIFY_DONATION_EVENT_ID}`],
