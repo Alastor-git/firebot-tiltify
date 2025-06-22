@@ -38,14 +38,23 @@ export const TiltifyDonationRewardsVariable: ReplaceVariable = {
         let index: number | null = null;
         let property: string | null = null;
         // If we have a first argument, assign it to index or proerty depending on its type
-        if (args.length === 1) {
+        if (args.length >= 1) {
+            // If the first argument is a string representing a number, convert it to a number
+            if (!isNaN(parseFloat(args[0])) && isFinite(args[0])) {
+                args[0] = parseFloat(args[0]);
+            }
             if (typeof args[0] === "number") {
                 index = args[0];
             } else if (typeof args[0] === "string") {
                 property = args[0];
             }
+        }
         // If we have a second argument, assign it to index or proerty depending on its type
-        } else if (args.length >= 2) {
+        if (args.length >= 2) {
+            // If the second argument is a string representing a number, convert it to a number
+            if (!isNaN(parseFloat(args[1])) && isFinite(args[1])) {
+                args[1] = parseFloat(args[1]);
+            }
             if (typeof args[1] === "string") {
                 property = args[1];
             } else if (typeof args[1] === "number") {
@@ -59,7 +68,7 @@ export const TiltifyDonationRewardsVariable: ReplaceVariable = {
         const sortedRewards: TiltifyRewardClaimEventData[] =
             index === null ? eventData.rewards : index >= eventData.rewards.length ? [] : [eventData.rewards[index]];
 
-        // Get the properties or objects from the relevant rewad claims
+        // Get the properties or objects from the relevant reward claims
         let filteredRewards: (string | number | TiltifyRewardClaimEventData)[] = sortedRewards;
         if (property !== null) {
             filteredRewards = sortedRewards.map((rewardClaim) => {
@@ -70,7 +79,14 @@ export const TiltifyDonationRewardsVariable: ReplaceVariable = {
             });
         }
 
-        // Return the proper result depending on the the number of remaining objects
+        // Return the proper result depending on request and the number of remaining objects
+
+        // if we just requested the rewards arrayBuffer, we always want an array
+        if (index === null && property === null) {
+            return filteredRewards
+        }
+
+        // If we either requested an element or a property, if there's a single answer, we don't want an array
         if (filteredRewards.length === 0) {
             return null;
         } else if (filteredRewards.length === 1) {
