@@ -168,7 +168,7 @@ export class TiltifyPollService extends AbstractPollService {
                 const errorMessage:string = error.message;
                 if (errorCode >= 500 && errorCode < 600) {
                     // Server errors
-                    // Observed : 
+                    // Observed :
                     // - 502: Bad Gateway or Proxy Error
                     // - 520: Unknown API error
                     logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${errorMessage}.`);

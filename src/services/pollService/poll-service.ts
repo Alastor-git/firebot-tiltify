@@ -121,7 +121,7 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
 
     protected pollingSuccess(campaignId: string): void {
         if (this.pollerStatus[campaignId].retryMode !== "None") {
-            logger.info(`Reconnecting of campaign ${campaignId} successful.`)
+            logger.info(`Reconnecting of campaign ${campaignId} successful.`);
         }
         this.pollerStatus[campaignId].retryMode = "None";
         this.pollerStatus[campaignId].retryAttempt = 0;

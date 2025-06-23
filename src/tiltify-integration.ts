@@ -199,7 +199,7 @@ export class TiltifyIntegration
 
     /**
      * Description placeholder
-     * 
+     *
      * @public
      */
     public unlink(): void {
