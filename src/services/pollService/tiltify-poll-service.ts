@@ -158,33 +158,52 @@ export class TiltifyPollService extends AbstractPollService {
             // After a success
             this.pollingSuccess(campaignId);
         } catch (error) {
+            if (!(campaignId in this.pollerStatus)) {
+                logger.debug(`An error happened after the poller for campaign ${campaignId} was deleted.`);
+                return;
+            }
             const pollerStatus = this.pollerStatus[campaignId];
             if (error instanceof TiltifyAPIError) {
-                switch (error.errorCode) {
-                    case 422: // Unprocessible entity
-                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`);
-                        pollerStatus.retryMode = "Shutdown";
-                        logger.info(`Internal Tiltify error while prossessing campaign ${campaignId} data.`);
-                        break;
-                    case 404: // Ressource Not Found
-                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`);
-                        pollerStatus.retryMode = "Shutdown";
-                        logger.info(`Campaign ${campaignId} cound not be found.`);
-                        break;
-                    case 401: // Unauthorized
-                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`);
-                        if (pollerStatus.retryMode === "None" || pollerStatus.retryMode === "Backoff") {
-                            pollerStatus.retryMode = "Once";
-                            logger.info(`Polling of campaign ${campaignId} has failed. Trying to reconnect once.`);
-                        }
-                        break;
-                    case 502: // Bad Gateway or Proxy Error
-                        logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${error.message}.`);
-                        if (pollerStatus.retryMode === "None") {
-                            pollerStatus.retryMode = "Backoff";
-                            logger.info(`Trying to reconnect campaign ${campaignId} after a delay`);
-                        }
-                        break;
+                const errorCode:number = error.errorCode;
+                const errorMessage:string = error.message;
+                if (errorCode >= 500 && errorCode < 600) {
+                    // Server errors
+                    // Observed : 
+                    // - 502: Bad Gateway or Proxy Error
+                    // - 520: Unknown API error
+                    logger.debug(`Received API error ${error.errorCode} while polling campaign ${campaignId}: ${errorMessage}.`);
+                    if (pollerStatus.retryMode === "None") {
+                        pollerStatus.retryMode = "Backoff";
+                    }
+                    // Display the retry message every time if we're still in the correct mode
+                    if (pollerStatus.retryMode === "Backoff") {
+                        logger.info(`Trying to reconnect campaign ${campaignId} after a delay`);
+                    }
+                } else if (errorCode === 401) {
+                    // 401: Unauthorized
+                    logger.debug(`Received API error ${errorCode} while polling campaign ${campaignId}: ${errorMessage}.`);
+                    if (pollerStatus.retryMode === "None" || pollerStatus.retryMode === "Backoff") {
+                        pollerStatus.retryMode = "Once";
+                    }
+                    // Display the retry message every time if we're still in the correct mode
+                    if (pollerStatus.retryMode === "Once") {
+                        logger.info(`Polling of campaign ${campaignId} has failed. Trying to reconnect once.`);
+                    }
+                } else if (errorCode === 404) {
+                    // 404: Ressource Not Found
+                    logger.debug(`Received API error ${errorCode} while polling campaign ${campaignId}: ${errorMessage}.`);
+                    pollerStatus.retryMode = "Shutdown";
+                    logger.info(`Campaign ${campaignId} cound not be found.`);
+                } else if (errorCode === 422) {
+                    // 422: Unprocessible entity
+                    logger.debug(`Received API error ${errorCode} while polling campaign ${campaignId}: ${errorMessage}.`);
+                    pollerStatus.retryMode = "Shutdown";
+                    logger.info(`Internal Tiltify error while prossessing campaign ${campaignId} data.`);
+                } else {
+                    // Standard other error. Probably a 4XX error
+                    logger.debug(`Received API error ${errorCode} while polling campaign ${campaignId}: ${errorMessage}.`);
+                    pollerStatus.retryMode = "Shutdown";
+                    logger.info(`Tiltify error while polling campaign ${campaignId} data with HTTP code ${errorCode}.`);
                 }
             } else {
                 this.pollerStatus[campaignId].retryMode = "Shutdown";
@@ -409,9 +428,8 @@ export class TiltifyPollService extends AbstractPollService {
                 this.pollerData[campaignId].lastDonationDate
             );
         } catch (error) {
-            throw new Error("API error while updating donations. ", {
-                cause: error
-            });
+            logger.debug("API error while updating donations. ");
+            throw error;
         }
 
         // update the campaign data if there have been new donations
@@ -421,9 +439,8 @@ export class TiltifyPollService extends AbstractPollService {
                 this.pollerData[campaignId].campaign =
                     await tiltifyAPIController().getCampaign(campaignId);
             } catch (error) {
-                throw new Error("API error while updating campaign data", {
-                    cause: error
-                });
+                logger.debug("API error while updating campaign data. ");
+                throw error;
             }
         }
 

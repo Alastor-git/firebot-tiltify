@@ -226,7 +226,7 @@ export class TiltifyIntegration
         }
 
         // disconnect if we don't have a good auth token
-        if (!TiltifyAuthManager.isTokenValid()) {
+        if (!await TiltifyAuthManager.isTokenValid()) {
             this.disconnect();
             return;
         }

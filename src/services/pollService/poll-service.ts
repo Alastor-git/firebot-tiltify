@@ -64,15 +64,15 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
             return;
         }
 
-        this.poller[campaignId] = setInterval(
-            () => this.abstractPoll(campaignId),
-            interval
-        );
         this.pollerStatus[campaignId] = {
             lastPollingTimestamp: 0,
             retryAttempt: 0,
             retryMode: "None"
         };
+        this.poller[campaignId] = setInterval(
+            () => this.abstractPoll(campaignId),
+            interval
+        );
 
         logger.debug(
             `Started polling Tiltify campaign ${campaignId}.`
@@ -80,7 +80,12 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
         this.emit("polling-started", campaignId);
     }
 
-    private abstractPoll(campaignId: string): void {
+    private async abstractPoll(campaignId: string): Promise<void> {
+        // Silently give up if the poller is stopped
+        if (!this.pollerStarted[campaignId]) {
+            return;
+        }
+
         const pollerStatus = this.pollerStatus[campaignId];
         // Check if we exceeded the max number of retries
         if (pollerStatus.retryMode === "Once" && pollerStatus.retryAttempt >= 1) {
@@ -99,18 +104,25 @@ export abstract class AbstractPollService extends TypedEmitter<PollingEvents> {
 
         // If we're in a retry mode, wait for the appropriate delay before attempting to poll again
         if (pollerStatus.retryMode !== "None") {
-            const retryDelay: number = Math.max(this.initalDelay * 2 ** pollerStatus.retryAttempt, this.maxDelay);
+            const retryDelay: number = Math.min(this.initalDelay * 2 ** pollerStatus.retryAttempt, this.maxDelay);
             if (pollerStatus.lastPollingTimestamp + retryDelay > Date.now()) {
                 return;
             }
-            logger.debug(`Polling retry #${pollerStatus.retryAttempt} happening after ${retryDelay / 1000}s`);
+            logger.debug(`Polling retry #${pollerStatus.retryAttempt} happening after ${retryDelay / 1000}s.`);
             pollerStatus.retryAttempt++;
         }
-        this.poll(campaignId);
+        await this.poll(campaignId);
         pollerStatus.lastPollingTimestamp = Date.now();
+        if (pollerStatus.retryMode === "Once" || (pollerStatus.retryMode === "Backoff" && pollerStatus.retryAttempt <= this.maxRetries)) {
+            const retryDelay: number = Math.min(this.initalDelay * 2 ** pollerStatus.retryAttempt, this.maxDelay);
+            logger.info(`Polling retry #${pollerStatus.retryAttempt} in ${retryDelay / 1000}s.`);
+        }
     }
 
     protected pollingSuccess(campaignId: string): void {
+        if (this.pollerStatus[campaignId].retryMode !== "None") {
+            logger.info(`Reconnecting of campaign ${campaignId} successful.`)
+        }
         this.pollerStatus[campaignId].retryMode = "None";
         this.pollerStatus[campaignId].retryAttempt = 0;
     }

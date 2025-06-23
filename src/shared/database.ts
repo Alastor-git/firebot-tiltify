@@ -41,7 +41,7 @@ export class TiltifyDatabase {
      * @throws {Error} if the database couldn't be loaded
      */
     async load(path: string): Promise<void> {
-        logger.debug(`Loading Tiltify database at ${path}`);
+        logger.debug(`Loading Tiltify database at APPDATA${path.split("AppData")[1]}`);
         this.db = new JsonDB(new Config(path, true, false, "/"));
         // Merge Push an empty database to initialize the database if necessary
         try {

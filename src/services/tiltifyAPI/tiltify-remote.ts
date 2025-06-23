@@ -65,9 +65,11 @@ export class TiltifyAPIController {
                 return; // Skip the middleware if request was successful
             }
             const { status, statusText, url } = response;
-            logger.warn(
-                `API error ${status} when requesting "${url}": ${statusText}`
-            );
+            if (status !== 520) {
+                logger.warn(
+                        `API error ${status} when requesting "${url}": ${statusText}`
+                    );
+            }
         },
         async onError({ request, error }) {
             logger.warn(
