@@ -28,6 +28,7 @@ import { CampaignEvent } from "@/events/campaign-event-data";
 import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
 import { TiltifyAPIError } from "@/shared/errors";
+import { TiltifyDonationMatch, TiltifyDonnationMatchCollection } from "@/types/donation-match";
 
 /**
  * Description placeholder
@@ -110,6 +111,8 @@ export class TiltifyPollService extends AbstractPollService {
             campaign: undefined,
             milestones: [],
             rewards: [],
+            lastDonationMatchUpdate: "",
+            donationMatches: {},
             lastDonationDate: "",
             donationIds: []
         };
@@ -129,6 +132,8 @@ export class TiltifyPollService extends AbstractPollService {
             await this.loadRewards(campaignId);
             // Load info about the Milestones.
             await this.loadMilestones(campaignId);
+            // Load info about donation matches
+            await this.loadDonationMatches(campaignId);
         } catch (error) {
             logger.debug(
                 `Stopped polling ${campaignId} because of an error.`
@@ -293,7 +298,7 @@ export class TiltifyPollService extends AbstractPollService {
      * @param {string} campaignId
      * @param {boolean} [verbose=true]
      * @returns {Promise<void>}
-     * @throws {Error} if milestones can't be loaded
+     * @throws {TiltifyAPIError} if milestones can't be loaded
      */
     async loadMilestones(campaignId: string, verbose: boolean = true): Promise<void> {
         // Populate info about the Milestones.
@@ -305,7 +310,7 @@ export class TiltifyPollService extends AbstractPollService {
             logger.warn(
                 `Information about Milestones for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
             );
-            throw new Error("Milestones not loaded", { cause: error });
+            throw error;
         }
         // Load saved milestones if any
         // They are saved to keep memory of which milestones have previously been reached so we know what events to trigger
@@ -373,9 +378,9 @@ export class TiltifyPollService extends AbstractPollService {
      * @param {string} campaignId
      * @param {boolean} [verbose=true]
      * @returns {Promise<void>}
-     * @throws {Error} if rewards can't be loaded
+     * @throws {TiltifyAPIError} if rewards can't be loaded
      */
-    async loadRewards(campaignId: string, verbose = true): Promise<void> {
+    async loadRewards(campaignId: string, verbose: boolean = true): Promise<void> {
         // Populate info about the rewards offered.
         // This is gonna update to reflect the quantities available and offered and possible new rewards.
 
@@ -386,7 +391,7 @@ export class TiltifyPollService extends AbstractPollService {
             logger.warn(
                 `Information about Rewards for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
             );
-            throw new Error("Rewards not loaded", { cause: error });
+            throw error;
         }
         if (verbose) {
             logger.debug(
@@ -406,6 +411,27 @@ export class TiltifyPollService extends AbstractPollService {
     }
 
     /**
+     * Loads Donation matches from the database and looks for updates from the API to raise events that might have been missed while the integration was disconnected.
+     *
+     * @async
+     * @param {string} campaignId
+     * @param {boolean} [verbose=true]
+     * @returns {Promise<void>}
+     * @throws {TiltifyAPIError} if DonationMatches can't be loaded
+     */
+    protected async loadDonationMatches(campaignId: string, verbose: boolean = true): Promise<void> {
+        // Load saved donation matches if any
+        // They are saved to keep memory of which matches have previously been reached so we know what events to trigger
+        const { lastDonationMatchUpdate, savedDonationMatches }: { lastDonationMatchUpdate: string, savedDonationMatches: TiltifyDonnationMatchCollection } =
+            await tiltifyIntegration().loadSavedDonationMatches(campaignId);
+        this.pollerData[campaignId].donationMatches = savedDonationMatches;
+        this.pollerData[campaignId].lastDonationMatchUpdate = lastDonationMatchUpdate;
+
+        // Populate info about the Matches.
+        await this.updateDonationMatches(campaignId);
+    }
+
+    /**
      * Description placeholder
      *
      * @async
@@ -415,8 +441,8 @@ export class TiltifyPollService extends AbstractPollService {
      */
     async updateDonations(campaignId: string): Promise<void> {
         // Load the last donation date if available
-        const { lastDonationDate, ids } =
-            await tiltifyIntegration().loadDonations(campaignId);
+        const { lastDonationDate, ids }: {lastDonationDate: string, ids: string[]} =
+            await tiltifyIntegration().loadSavedDonations(campaignId);
         this.pollerData[campaignId].lastDonationDate = lastDonationDate;
         this.pollerData[campaignId].donationIds = ids;
 
@@ -486,6 +512,42 @@ export class TiltifyPollService extends AbstractPollService {
                 await this.processRewardClaim(campaignId, rewardClaim);
             }
         }
+
+        // If there are donation matches, process them
+        if (donation.donation_matches) {
+            for (const donationMatch of donation.donation_matches) {
+                await this.processDonationMatchUpdate(campaignId, donationMatch);
+            }
+        }
+        // Donation matches that are active but don't matvch the current donation are expired
+        const updatedDonationMatchIds: string[] = donation.donation_matches?.map(donationMatch => donationMatch.id) ?? [];
+        const expiredDonationMatches: TiltifyDonationMatch[] = Object.values(this.pollerData[campaignId].donationMatches).filter((donationMatch) => {
+            return donationMatch.active && !(donationMatch.id in updatedDonationMatchIds);
+        });
+        for (const expiredMatch of expiredDonationMatches) {
+            // TODO: Check : If the match_type === 'all', when the match expired, is it registered as a new donation ? Or do we need to manually update the campaign ?
+            expiredMatch.active = false;
+            // eslint-disable-next-line camelcase
+            expiredMatch.completed_at = expiredMatch.ends_at;
+            // eslint-disable-next-line camelcase
+            expiredMatch.updated_at = expiredMatch.ends_at;
+            if (Date.parse(this.pollerData[campaignId].lastDonationMatchUpdate) < Date.parse(expiredMatch.updated_at)) {
+                this.pollerData[campaignId].lastDonationMatchUpdate = expiredMatch.updated_at;
+            }
+            // TODO: Raise Match eded event
+        }
+
+        // Update the database if anything changed
+        if (donation.donation_matches || expiredDonationMatches.length > 0) {
+            tiltifyIntegration().saveDonationMatches(
+                campaignId,
+                {
+                    lastDonationMatchUpdate: this.pollerData[campaignId].lastDonationMatchUpdate,
+                    donationMatches: this.pollerData[campaignId].donationMatches
+                }
+            );
+        }
+
 
         // Update the last donation date to the current one.
         this.pollerData[campaignId].lastDonationDate =
@@ -617,6 +679,84 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                 false
             );
         }
+    }
+
+    /**
+     * Look for updates of the donation Matches when we aren't receiving new donations
+     *
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<void>}
+     * @throws {Error} if donation matches can't be updated
+     */
+    async updateDonationMatches(campaignId: string): Promise<void> {
+        // This is gonna update to reflect the completion and possibly new Matches.
+        try {
+            const lastDonationMatchUpdate: string = this.pollerData[campaignId].lastDonationMatchUpdate;
+            let donationMatchUpdates: TiltifyDonationMatch[] =
+                await tiltifyAPIController().getDonationMatches(campaignId, lastDonationMatchUpdate !== "" ? lastDonationMatchUpdate : undefined);
+
+            donationMatchUpdates = donationMatchUpdates.sort(
+                (a, b) =>
+                    Date.parse(a.updated_at ?? "") -
+                    Date.parse(b.updated_at ?? "")
+            );
+
+            for (const donationMatchUpdate of donationMatchUpdates) {
+                await this.processDonationMatchUpdate(campaignId, donationMatchUpdate);
+            }
+
+            // Update the database if anything changed
+            if (donationMatchUpdates.length > 0) {
+                tiltifyIntegration().saveDonationMatches(
+                    campaignId,
+                    {
+                        lastDonationMatchUpdate: this.pollerData[campaignId].lastDonationMatchUpdate,
+                        donationMatches: this.pollerData[campaignId].donationMatches
+                    }
+                );
+            }
+        } catch (error) {
+            logger.warn(
+                `Information about Donation Matches for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
+            );
+            throw error;
+        }
+    }
+
+    /**
+     * Process a donation match update that has been received either from a dobnation of from an independant update. 
+     *
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<void>}
+     * @throws {Error} if donation matches can't be processed
+     */
+    async processDonationMatchUpdate(campaignId: string, donationMatchUpdate: TiltifyDonationMatch): Promise<void> {
+        if (donationMatchUpdate.id in this.pollerData[campaignId].donationMatches) {
+            // It's an update to an existing donation match
+            const savedDonationMatch: TiltifyDonationMatch = this.pollerData[campaignId].donationMatches[donationMatchUpdate.id];
+            if (savedDonationMatch.active && !donationMatchUpdate.active) {
+                // The donation match completed
+                // TODO: Raise match completed event
+                // TODO: Check if we receive a donation and it completes the donation match, is this true, or do we need a new condition ?
+            } else if (!savedDonationMatch.active && donationMatchUpdate.active) {
+                // The donation match started
+                // Todo: Raise Match started event
+            }
+        } else {
+            // It's a previously unknown match
+            if (donationMatchUpdate.active) {
+                // The donation match started
+                // Todo: Raise Match started event
+            } else if (donationMatchUpdate.completed_at !== null) {
+                // The donation match started and ended
+                // Todo: Raise match ended event or raise match started and ended event or ignore it ?
+            }
+        }
+        // Update the poller data
+        this.pollerData[campaignId].lastDonationMatchUpdate = donationMatchUpdate.updated_at;
+        this.pollerData[campaignId].donationMatches[donationMatchUpdate.id] = donationMatchUpdate;
     }
 
     public checkIfIntegrationDisconnected(): void {

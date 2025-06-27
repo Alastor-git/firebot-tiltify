@@ -32,6 +32,7 @@ import {
 import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
 import { TiltifyAuthManager } from "./auth-manager";
 import { TILTIFY_INTEGRATION_ID } from "./constants";
+import { TiltifyDonnationMatchCollection } from "./types/donation-match";
 
 /**
  * Description placeholder
@@ -333,7 +334,7 @@ export class TiltifyIntegration
     }
 
     /**
-     * Description placeholder
+     * Loads the Milestones for the camaign from the database
      *
      * @public
      * @async
@@ -365,7 +366,7 @@ export class TiltifyIntegration
     }
 
     /**
-     * Description placeholder
+     * Saves the Milestones of the campaign to the database
      *
      * @public
      * @param {string} campaignId
@@ -381,14 +382,14 @@ export class TiltifyIntegration
     }
 
     /**
-     * Description placeholder
+     * Loads the donation ids for the campaign from the database
      *
      * @public
      * @async
      * @param {string} campaignId
      * @returns {Promise<{ lastDonationDate: string; ids: string[] }>}
      */
-    public async loadDonations(
+    public async loadSavedDonations(
         campaignId: string
     ): Promise<{ lastDonationDate: string; ids: string[] }> {
         let lastDonationDate: string;
@@ -425,7 +426,7 @@ export class TiltifyIntegration
     }
 
     /**
-     * Description placeholder
+     * Saves the donation ids of the campaign in the database
      *
      * @public
      * @param {string} campaignId
@@ -448,7 +449,76 @@ export class TiltifyIntegration
             this.disconnect();
         }
     }
+
+    /**
+     * Loads the donation Matches for this campaign saved in the database
+     *
+     * @public
+     * @async
+     * @param {string} campaignId
+     * @returns {Promise<{ lastDonationMatchUpdate: string; savedDonationMatches: TiltifyDonnationMatchCollection }>}
+     */
+    async loadSavedDonationMatches(campaignId: string): Promise<{ lastDonationMatchUpdate: string, savedDonationMatches: TiltifyDonnationMatchCollection }> {
+        let lastDonationMatchUpdate: string;
+        try {
+            lastDonationMatchUpdate = (await this.db.get(
+                `/tiltify/${campaignId}/lastDonationMatchUpdate`
+            )) as string;
+        } catch {
+            logger.debug(
+                `Couldn't find the last donation match update date in campaign ${campaignId}. `
+            );
+            lastDonationMatchUpdate = "";
+        }
+
+        // Loading the IDs of known donations for this campaign
+        let savedDonationMatches: TiltifyDonnationMatchCollection | undefined;
+        try {
+            savedDonationMatches = (await this.db.get(`/tiltify/${campaignId}/donationMatches`)) as TiltifyDonnationMatchCollection;
+        } catch {
+            logger.debug(
+                `No donation matches saved for campaign ${campaignId}. Initializing database. `
+            );
+            try {
+                this.db.set(`/tiltify/${campaignId}/donationMatches`, {});
+            } catch (error) {
+                logger.warn(error);
+                this.disconnect();
+            }
+        }
+        if (!savedDonationMatches) {
+            savedDonationMatches = {};
+        }
+        return { lastDonationMatchUpdate: lastDonationMatchUpdate, savedDonationMatches: savedDonationMatches };
+    }
+
+    /**
+     * Saves the donation matches of the campaign in the database
+     *
+     * @public
+     * @param {string} campaignId
+     * @param {{ lastDonationMatchUpdate: string; donationMatches: TiltifyDonnationMatchCollection }} param0
+     * @param {string} param0.lastDonationMatchUpdate
+     * @param {TiltifyDonnationMatchCollection} param0.donationMatches
+     */
+    public saveDonationMatches(
+        campaignId: string,
+        { lastDonationMatchUpdate, donationMatches }: { lastDonationMatchUpdate: string; donationMatches: TiltifyDonnationMatchCollection }
+    ): void {
+        try {
+            this.db.set(`/tiltify/${campaignId}/donationMatches`, donationMatches);
+            this.db.set(
+                `/tiltify/${campaignId}/lastDonationMatchUpdate`,
+                lastDonationMatchUpdate
+            );
+        } catch (error) {
+            logger.warn(error);
+            this.disconnect();
+        }
+    }
 }
+
+
 
 /**
  * Description placeholder

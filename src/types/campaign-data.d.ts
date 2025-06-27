@@ -3,6 +3,7 @@ import { TiltifyCampaign } from "./campaign";
 import { TiltifyMilestone } from "./milestone";
 import { TiltifyCampaignReward } from "./campaign-reward";
 import { SetOptionnal } from "./shared";
+import { TiltifyDonnationMatchCollection } from "./donation-match";
 
 export type TiltifyCampaignData = {
     campaignId: string;
@@ -10,6 +11,8 @@ export type TiltifyCampaignData = {
     campaign: TiltifyCampaign;
     milestones: TiltifyMilestone[];
     rewards: TiltifyCampaignReward[];
+    donationMatches: TiltifyDonnationMatchCollection;
+    lastDonationMatchUpdate: string;
     lastDonationDate: string;
     donationIds: string[];
 };

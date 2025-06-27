@@ -16,6 +16,7 @@ import { TiltifyTarget } from "@/types/target";
 import { TiltifyAuthManager } from "@/auth-manager";
 import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types/types/modules/auth-manager";
 import { TiltifyAPIError } from "@/shared/errors";
+import { TiltifyDonationMatch } from "@/types/donation-match";
 
 /**
  * Description placeholder
@@ -35,7 +36,6 @@ const UNPROTECTED_ROUTES: (keyof paths)[] = [
  * @typedef {TiltifyAPIController}
  */
 export class TiltifyAPIController {
-
     /**
      * Holds the singleton instance of the class
      *
@@ -316,6 +316,50 @@ export class TiltifyAPIController {
         const donationsData: components["schemas"]["Donation"][] = data.data;
         return donationsData;
     }
+
+
+    /**
+     * Retrieves information about donation matches for a campaign
+     *
+     * @async
+     * @param {string} campaignId
+     * @param {(string | null)} [updatedAfter=null]
+     * @returns {Promise<TiltifyDonationMatch[]>}
+     * @throws {TiltifyAPIError} if no Token or request rejected
+     */
+    async getDonationMatches(
+        campaignId: string,
+        updatedAfter: string | null = null
+    ): Promise<TiltifyDonationMatch[]> {
+        const {
+            response,
+            data, // only present if 2XX response
+            error // only present if not 2XX response
+            // eslint-disable-next-line new-cap
+        } = await this.client.GET(
+            "/api/public/campaigns/{campaign_id}/donation_matches",
+            {
+                params: {
+                    path: { campaign_id: campaignId }, // eslint-disable-line camelcase
+                    query: updatedAfter
+                        ? { updated_after: updatedAfter } // eslint-disable-line camelcase
+                        : undefined
+                }
+            }
+        );
+
+        if (error?.error) {
+            throw new TiltifyAPIError(error.error.status, `Donation matches for campaign ${campaignId} couldn't be retrieved: ${error.error.message}`);
+        } else if (!response.ok) {
+            throw new TiltifyAPIError(response.status, `Donation matches for campaign ${campaignId} couldn't be retrieved: ${response.statusText}`);
+        } else if (!data?.data) {
+            throw new TiltifyAPIError(410, `Donation matches for campaign ${campaignId} returned no data`);
+        }
+
+        const donationMatchesData: components["schemas"]["DonationMatch"][] = data.data;
+        return donationMatchesData;
+    }
+
 
     /**
      * Retrieves information about a cause

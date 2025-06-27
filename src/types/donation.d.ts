@@ -1,5 +1,6 @@
 import { TiltifyMoney } from "./shared";
 import { TiltifyRewardClaim } from "./campaign-reward";
+import { TiltifyDonationMatch } from "./donation-match";
 
 export type TiltifyDonation = {
     amount: TiltifyMoney;
@@ -10,4 +11,5 @@ export type TiltifyDonation = {
     poll_option_id?: string | null;
     reward_claims?: TiltifyRewardClaim[] | null;
     target_id?: string | null;
+    donation_matches: TiltifyDonationMatch[] | null;
 };
