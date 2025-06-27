@@ -4,7 +4,7 @@ export { TiltifyDonationCommentVariable } from "./donation-comment";
 export { TiltifyDonationRewardIdsVariable } from "./donation-reward-ids";
 export { TiltifyDonationRewardNameVariable } from "./donation-reward-name";
 export { TiltifyDonationRewardDescriptionVariable } from "./donation-reward-description";
-export { TiltifyDonationRewardPriceVariable } from "./donation-reward-price";
+export { TiltifyDonationRewardCostVariable as TiltifyDonationRewardPriceVariable } from "./donation-reward-cost";
 export { TiltifyDonationRewardQuantityAvailableVariable } from "./donation-reward-quantity-available";
 export { TiltifyDonationRewardQuantityRedeemedVariable } from "./donation-reward-quantity-redeemed";
 export { TiltifyDonationRewardQuantityRemainingVariable } from "./donation-reward-quantity-remaining";

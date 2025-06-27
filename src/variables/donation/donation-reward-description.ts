@@ -8,7 +8,8 @@ import { TiltifyDonationEventData } from "@/events/donation-event-data";
 
 export const TiltifyDonationRewardDescriptionVariable: ReplaceVariable = {
     definition: {
-        handle: "tiltifyDonationRewardDescription[id]",
+        handle: "tiltifyDonationRewardDescription",
+        usage: "tiltifyDonationRewardDescription[id]",
         description: "The description of the reward attached to the current Tiltify donation and with the given Id",
         triggers: {
             event: [`${TILTIFY_EVENT_SOURCE_ID}:${TILTIFY_DONATION_EVENT_ID}`],

@@ -8,24 +8,31 @@ import { TiltifyDonationEventData, TiltifyRewardClaimEventData } from "@/events/
 
 export const TiltifyDonationRewardsVariable: ReplaceVariable = {
     definition: {
-        handle: "tiltifyDonationRewards[index?, property?]",
+        handle: "tiltifyDonationRewards",
+        usage: "tiltifyDonationRewards[index?, property?]",
         description: "Access the properties of rewards associated with a Tiltify donation",
         examples: [
             {
                 usage: "tiltifyDonationRewards[]",
-                description: "Returns the JSON array of the rewards claims associated with the current donation."
+                description:
+`Returns the JSON array of the rewards claims associated with the current donation.`
             },
             {
                 usage: "tiltifyDonationRewards[index]",
-                description: "Returns the JSON object associated with the reward claim designated by the index. The total number of reward claims ca be accessed through $donationRewardCount. "
-            },
-            {
-                usage: "tiltifyDonationRewards[index, property]",
-                description: "Returns the value of the property for the reward claim designated by the index. The total number of reward claims ca be accessed through $donationRewardCount. "
+                description:
+`Returns the JSON object associated with the reward claim designated by the index or null if the index is out of bounds. 
+The total number of reward claims ca be accessed through $donationRewardCount. `
             },
             {
                 usage: "tiltifyDonationRewards[property]",
-                description: "Returns the array of the values of the given property for all rewards claims in the current donation. "
+                description:
+`Returns the array of the values of the given property for all rewards claims in the current donation or null if the property doesn't exist. 
+Valid properties are 'id', 'name', 'quantityAvailable', 'quantityRemaining', 'quantityRedeemed', 'cost', 'description'. `
+            },
+            {
+                usage: "tiltifyDonationRewards[index, property]",
+                description:
+`Returns the value of the property for the reward claim designated by the index or null if the index is out of bounds or the property doesn't exist. `
             }
         ],
         triggers: {
@@ -34,7 +41,14 @@ export const TiltifyDonationRewardsVariable: ReplaceVariable = {
         },
         possibleDataOutput: [OutputDataType.NUMBER, OutputDataType.TEXT, OutputDataType.OBJECT, OutputDataType.ARRAY, OutputDataType.NULL]
     },
-    evaluator: function (trigger, ...args): null | string | number | TiltifyRewardClaimEventData | (string | number | TiltifyRewardClaimEventData)[] {
+    /*
+    * Return values :
+    * tiltifyDonationRewards[] : Array of Objects
+    * tiltifyDonationRewards[index] : Object or Null if index out of bounds
+    * tiltifyDonationRewards[property] : Array of values, Null if property doesn't exist
+    * tiltifyDonationRewards[index, property] : Property value, Null if index out of bounds or property doesn't exist
+    */
+    evaluator: function (trigger, ...args): null | string | number | TiltifyRewardClaimEventData | (string | number | TiltifyRewardClaimEventData | null)[] {
         let index: number | null = null;
         let property: string | null = null;
         // If we have a first argument, assign it to index or proerty depending on its type
@@ -55,9 +69,9 @@ export const TiltifyDonationRewardsVariable: ReplaceVariable = {
             if (!isNaN(parseFloat(args[1])) && isFinite(args[1])) {
                 args[1] = parseFloat(args[1]);
             }
-            if (typeof args[1] === "string") {
+            if (typeof args[1] === "string" && property === null) {
                 property = args[1];
-            } else if (typeof args[1] === "number") {
+            } else if (typeof args[1] === "number" && index === null) {
                 index = args[1];
             }
         }
@@ -69,29 +83,40 @@ export const TiltifyDonationRewardsVariable: ReplaceVariable = {
             index === null ? eventData.rewards : index >= eventData.rewards.length ? [] : [eventData.rewards[index]];
 
         // Get the properties or objects from the relevant reward claims
-        let filteredRewards: (string | number | TiltifyRewardClaimEventData)[] = sortedRewards;
+        let filteredRewards: (string | number | TiltifyRewardClaimEventData | null)[] = sortedRewards;
         if (property !== null) {
             filteredRewards = sortedRewards.map((rewardClaim) => {
                 if (property in rewardClaim) {
                     return rewardClaim[property as keyof TiltifyRewardClaimEventData] ?? 0;
                 }
-                return "";
+                // Property doesn't exist on the object
+                return null;
             });
         }
 
         // Return the proper result depending on request and the number of remaining objects
 
-        // if we just requested the rewards arrayBuffer, we always want an array
+        // if we just requested the rewards array, we always want an array
         if (index === null && property === null) {
-            return filteredRewards
+            return filteredRewards;
         }
 
-        // If we either requested an element or a property, if there's a single answer, we don't want an array
-        if (filteredRewards.length === 0) {
-            return null;
-        } else if (filteredRewards.length === 1) {
+        // If we requested an element with or without specifying a property, we don't want an array
+        if (index !== null) {
+            // Index out of bounds
+            if (filteredRewards.length === 0) {
+                return null;
+            }
             return filteredRewards[0];
         }
+
+        // If (property !== null && index === null)
+
+        // Property doesn't exist
+        if (filteredRewards[0] === null) {
+            return null;
+        }
+        // property exists
         return filteredRewards;
     }
 };
