@@ -7,16 +7,18 @@ export type TiltifyDonationMatch = {
     matched_by: string;
     // Time data
     inserted_at: string; // Timestamp of the match creation
-    starts_at: string; // Timestamp of when the donation match became active
+    starts_at: string; // Timestamp of when the donation match became active ?
+    // FIXME: Seems to be set to ends_at at all times
     completed_at: string | null; // Timestamp of when the match ended (amount reached of end time reached)
     ends_at: string; // Timestamp of when the donation match will expire
-    updated_at: string;
+    updated_at: string;// Timestamp when the object was last updated.
+    // FIXME: Seems stuck at inserted at as long as the match is active. Then equals completed_at afterwards. 
     // Money data
     match_type?: string; // 'all' if the money is given anyway at the end of the match, 'amount' if the non matched money is refunded.
     started_at_amount: TiltifyMoney; // The money raised by the campaign when the match started
-    amount: TiltifyMoney; // The amount of money that has been matched
+    amount: TiltifyMoney; // FIXME: Seems identical to pledged_amount
     pledged_amount: TiltifyMoney; // The amount of money that can be matched before the pledge ends
-    total_amount_raised: TiltifyMoney; // FIXME: Unclear what this one means
+    total_amount_raised: TiltifyMoney; // The amount of money that has been matched so far
 };
 
 export type TiltifyDonnationMatchCollection = {[matchId: string]: TiltifyDonationMatch};

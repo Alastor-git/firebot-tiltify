@@ -451,15 +451,15 @@ export class TiltifyPollService extends AbstractPollService {
             // Acquire the donations since the last saved from Tiltify and sort them by date.
             donations = await tiltifyAPIController().getCampaignDonations(
                 campaignId,
-                this.pollerData[campaignId].lastDonationDate
+                new Date(new Date(this.pollerData[campaignId].lastDonationDate).getTime() + 1).toJSON()
             );
         } catch (error) {
             logger.debug("API error while updating donations. ");
             throw error;
         }
 
-        // update the campaign data if there have been new donations
-        if (donations) {
+        if (donations.length > 0) {
+            // update the campaign data if there have been new donations
             try {
                 // A donation has happened. Reload campaign info to update collected amounts
                 this.pollerData[campaignId].campaign =
@@ -468,6 +468,9 @@ export class TiltifyPollService extends AbstractPollService {
                 logger.debug("API error while updating campaign data. ");
                 throw error;
             }
+        } else {
+            // Update donation matches if there has been no new donations this cycle
+            this.updateDonationMatches(campaignId);
         }
 
         const sortedDonations = donations.sort(
@@ -517,12 +520,17 @@ export class TiltifyPollService extends AbstractPollService {
         if (donation.donation_matches) {
             for (const donationMatch of donation.donation_matches) {
                 await this.processDonationMatchUpdate(campaignId, donationMatch);
+                logger.debug(`Donation of $${donation.amount?.value ?? 0} by ${donation.donor_name} matched by ${donationMatch.matched_by}. Matching until $${donationMatch.pledged_amount?.value ?? 0} or ${donationMatch.ends_at}. $${donationMatch.total_amount_raised?.value ?? 0} matched so far. `);
             }
         }
         // Donation matches that are active but don't matvch the current donation are expired
         const updatedDonationMatchIds: string[] = donation.donation_matches?.map(donationMatch => donationMatch.id) ?? [];
         const expiredDonationMatches: TiltifyDonationMatch[] = Object.values(this.pollerData[campaignId].donationMatches).filter((donationMatch) => {
-            return donationMatch.active && !(donationMatch.id in updatedDonationMatchIds);
+            return (
+                donationMatch.active &&
+                !updatedDonationMatchIds.includes(donationMatch.id) &&
+                Date.parse(donation.completed_at ?? "") > Date.parse(donationMatch.inserted_at)
+            );
         });
         for (const expiredMatch of expiredDonationMatches) {
             // TODO: Check : If the match_type === 'all', when the match expired, is it registered as a new donation ? Or do we need to manually update the campaign ?
@@ -534,7 +542,7 @@ export class TiltifyPollService extends AbstractPollService {
             if (Date.parse(this.pollerData[campaignId].lastDonationMatchUpdate) < Date.parse(expiredMatch.updated_at)) {
                 this.pollerData[campaignId].lastDonationMatchUpdate = expiredMatch.updated_at;
             }
-            // TODO: Raise Match eded event
+            const eventDetails = {}; // TODO: Raise Match ended event
         }
 
         // Update the database if anything changed
@@ -694,7 +702,11 @@ Cause: ${eventDetails.campaignInfo.cause}`);
         try {
             const lastDonationMatchUpdate: string = this.pollerData[campaignId].lastDonationMatchUpdate;
             let donationMatchUpdates: TiltifyDonationMatch[] =
-                await tiltifyAPIController().getDonationMatches(campaignId, lastDonationMatchUpdate !== "" ? lastDonationMatchUpdate : undefined);
+                await tiltifyAPIController().getDonationMatches(
+                    campaignId,
+                    lastDonationMatchUpdate !== "" ? new Date(new Date(lastDonationMatchUpdate).getTime() + 1).toJSON() : undefined
+                );
+            // FIXME : It appears updated_at lies and we can't rely on it to specify updated_after parameter to the API. 
 
             donationMatchUpdates = donationMatchUpdates.sort(
                 (a, b) =>
@@ -738,20 +750,20 @@ Cause: ${eventDetails.campaignInfo.cause}`);
             const savedDonationMatch: TiltifyDonationMatch = this.pollerData[campaignId].donationMatches[donationMatchUpdate.id];
             if (savedDonationMatch.active && !donationMatchUpdate.active) {
                 // The donation match completed
-                // TODO: Raise match completed event
+                const eventDetails = {}; // TODO: Raise match completed event
                 // TODO: Check if we receive a donation and it completes the donation match, is this true, or do we need a new condition ?
             } else if (!savedDonationMatch.active && donationMatchUpdate.active) {
                 // The donation match started
-                // Todo: Raise Match started event
+                const eventDetails = {}; // Todo: Raise Match started event
             }
         } else {
             // It's a previously unknown match
             if (donationMatchUpdate.active) {
                 // The donation match started
-                // Todo: Raise Match started event
+                const eventDetails = {}; // Todo: Raise Match started event
             } else if (donationMatchUpdate.completed_at !== null) {
                 // The donation match started and ended
-                // Todo: Raise match ended event or raise match started and ended event or ignore it ?
+                const eventDetails = {}; // Todo: Raise match ended event or raise match started and ended event or ignore it ?
             }
         }
         // Update the poller data
@@ -761,7 +773,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
 
     public checkIfIntegrationDisconnected(): void {
         let isConnected: boolean = false;
-        for(const campaignId of Object.keys(this.pollerStarted)) {
+        for (const campaignId of Object.keys(this.pollerStarted)) {
             if (this.pollerStarted[campaignId] === true) {
                 isConnected = true;
             }
