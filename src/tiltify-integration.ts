@@ -162,6 +162,9 @@ export class TiltifyIntegration
         logger.info(`Initializing integration...`);
         // Register all events
         eventManager.registerEventSource(TiltifyEventSource);
+        for (const event of TiltifyEventSource.events) {
+            logger.debug(`Registered event ${event.name}`);
+        }
 
         // Register all variables of the integration module
         const variables: ReplaceVariable[] = Object.values(Variables);

@@ -6,3 +6,5 @@ export const TILTIFY_INTEGRATION_ID = "tiltify";
 export const TILTIFY_EVENT_SOURCE_ID = "tiltify";
 export const TILTIFY_DONATION_EVENT_ID = "donation";
 export const TILTIFY_MILESTONE_EVENT_ID = "milestone";
+export const TILTIFY_MATCH_STARTED_EVENT_ID = "donation match started";
+export const TILTIFY_MATCH_ENDED_EVENT_ID = "donation match ended";

@@ -1,10 +1,18 @@
+import { TILTIFY_DONATION_EVENT_ID } from "@/constants";
+import { FirebotEvent } from "@/@types/firebot-events";
+
 import { TiltifyDonation } from "@/types/donation";
-import { CampaignEvent, TiltifyCampaignEventData, getManualMetadata as getCampaignManualMetadata } from "./campaign-event-data";
 import { TiltifyRewardClaim } from "@/types/campaign-reward";
 import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
-import { TILTIFY_DONATION_EVENT_ID } from "@/constants";
-import { FirebotEvent } from "@/@types/firebot-events";
+
+import {
+    CampaignEvent,
+    TiltifyCampaignEventData,
+    getManualMetadata as getCampaignManualMetadata
+} from "./campaign-event-data";
+import { TiltifyDonationMatchData } from "./donation-match-event-data";
+
 
 export type TiltifyRewardClaimEventData = {
     id: string;
@@ -20,6 +28,7 @@ export type TiltifyDonationEventData = TiltifyCampaignEventData & {
     from: string;
     donationAmount: number;
     rewards: TiltifyRewardClaimEventData[];
+    matches: TiltifyDonationMatchData[];
     comment: string;
     pollOptionId: string;
     challengeId: string;
@@ -40,6 +49,7 @@ const getManualMetadata: TiltifyDonationEventData = {
             description: "This is a dummy reward"
         }
     ],
+    matches: [],
     comment: "Thanks for the stream!",
     pollOptionId: "",
     challengeId: ""
@@ -47,13 +57,16 @@ const getManualMetadata: TiltifyDonationEventData = {
 
 function getMessage(eventData: TiltifyDonationEventData) {
     return `**${eventData.from}** donated **$${eventData.donationAmount}** to ${eventData.campaignInfo.name}${
+        eventData.matches.length === 0 ? "" :
+            ` matched x${eventData.matches.length + 1}`
+    }${
         eventData.rewards.length === 0 ? "" :
             eventData.rewards.length === 1 && eventData.rewards[0].quantityRedeemed <= 1 ?
                 ` with reward *${eventData.rewards[0].name ? eventData.rewards[0].name : eventData.rewards[0].id}*` :
                 ` with rewards ${eventData.rewards.map(rewardClaim =>
                     `${rewardClaim.quantityRedeemed <= 1 ? '' : `${rewardClaim.quantityRedeemed} x `}*${rewardClaim.name ? rewardClaim.name : rewardClaim.id}*`
                 ).join(', ')}`
-    }`;// TODO: Test redeeming several of a reward
+    }`;
 }
 
 export const TiltifyDonationEvent: FirebotEvent = {
@@ -117,6 +130,16 @@ export class DonationEvent {
                     description: rewardClaim.reward?.description ?? ""
                 };
                 return rewardClaimEventData;
+            }) ?? [],
+            matches: donationData?.donation_matches?.map<TiltifyDonationMatchData>((match) => {
+                const matchData: TiltifyDonationMatchData = {
+                    matchedBy: match.matched_by,
+                    pledgedAmount: Number(match.pledged_amount?.value ?? 0),
+                    amountMatched: Number(match.total_amount_raised?.value ?? 0),
+                    endsAtTimestamp: new Date(match.ends_at).getTime() / 1000,
+                    remainingTime: match.active ? (new Date(match.ends_at).getTime() - new Date().getTime()) / 1000 : 0
+                };
+                return matchData;
             }) ?? [],
             comment: donationData?.donor_comment ?? "",
             pollOptionId: donationData?.poll_option_id ?? "",

@@ -14,6 +14,8 @@ import {
     TILTIFY_DONATION_EVENT_ID,
     TILTIFY_EVENT_SOURCE_ID,
     TILTIFY_INTEGRATION_ID,
+    TILTIFY_MATCH_ENDED_EVENT_ID,
+    TILTIFY_MATCH_STARTED_EVENT_ID,
     TILTIFY_MILESTONE_EVENT_ID
 } from "@/constants";
 
@@ -29,6 +31,7 @@ import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
 import { TiltifyAPIError } from "@/shared/errors";
 import { TiltifyDonationMatch, TiltifyDonationMatchCollection } from "@/types/donation-match";
+import { TiltifyDonationMatchEventData } from "@/events/donation-match-event-data";
 
 /**
  * Description placeholder
@@ -547,7 +550,25 @@ export class TiltifyPollService extends AbstractPollService {
             if (Date.parse(this.pollerData[campaignId].lastDonationMatchUpdate) < Date.parse(expiredMatch.updated_at)) {
                 this.pollerData[campaignId].lastDonationMatchUpdate = expiredMatch.updated_at;
             }
-            const eventDetails = {}; // TODO: Raise Match ended event
+            // Create the donation ended event
+            const eventDetails: TiltifyDonationMatchEventData = new CampaignEvent(
+                this.pollerData[campaignId].campaign,
+                this.pollerData[campaignId].cause
+            )
+                .createMatchEndedEvent(expiredMatch)
+                .valueOf();
+
+            // Log the event
+            logger.info(`A donation match has ended : ${eventDetails.matchedBy} has matched $${
+                eventDetails.amountMatched} / $${eventDetails.pledgedAmount} for campaign ${eventDetails.campaignInfo.name}.`);
+
+            // Trigger the event
+            eventManager.triggerEvent(
+                TILTIFY_EVENT_SOURCE_ID,
+                TILTIFY_MATCH_ENDED_EVENT_ID,
+                eventDetails,
+                false
+            );
         }
 
         // Update the database if anything changed
@@ -579,6 +600,7 @@ export class TiltifyPollService extends AbstractPollService {
 
         logger.info(`Donation: 
 From ${eventDetails.from} for $${eventDetails.donationAmount}. 
+Matches : x${eventDetails.matches.length + 1} by ${eventDetails.matches.map(match => match.matchedBy).join(", ")}. 
 Total raised : $${eventDetails.campaignInfo.amountRaised}
 Rewards: ${eventDetails.rewards.map(rewardClaim => `${rewardClaim.quantityRedeemed} * ${rewardClaim.name ?? rewardClaim.id}`).join(", ")}
 Campaign : ${eventDetails.campaignInfo.name}
@@ -741,7 +763,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
     }
 
     /**
-     * Process a donation match update that has been received either from a dobnation of from an independant update. 
+     * Process a donation match update that has been received either from a dobnation of from an independant update.
      *
      * @async
      * @param {string} campaignId
@@ -760,20 +782,127 @@ Cause: ${eventDetails.campaignInfo.cause}`);
 
             if (savedDonationMatch.active && !donationMatchUpdate.active) {
                 // The donation match completed
-                const eventDetails = {}; // TODO: Raise match completed event
-                // TODO: Check if we receive a donation and it completes the donation match, is this true, or do we need a new condition ?
+
+                // Create the donation ended event
+                const eventDetails: TiltifyDonationMatchEventData = new CampaignEvent(
+                    this.pollerData[campaignId].campaign,
+                    this.pollerData[campaignId].cause
+                )
+                    .createMatchEndedEvent(donationMatchUpdate)
+                    .valueOf();
+
+                // Log the event
+                logger.info(`A donation match has ended : ${eventDetails.matchedBy} has matched $${
+                    eventDetails.amountMatched} / $${eventDetails.pledgedAmount} for campaign ${eventDetails.campaignInfo.name}.`);
+
+                // Trigger the event
+                eventManager.triggerEvent(
+                    TILTIFY_EVENT_SOURCE_ID,
+                    TILTIFY_MATCH_ENDED_EVENT_ID,
+                    eventDetails,
+                    false
+                );
             } else if (!savedDonationMatch.active && donationMatchUpdate.active) {
                 // The donation match started
-                const eventDetails = {}; // Todo: Raise Match started event
+
+                // Create the donation started event
+                const eventDetails: TiltifyDonationMatchEventData = new CampaignEvent(
+                    this.pollerData[campaignId].campaign,
+                    this.pollerData[campaignId].cause
+                )
+                    .createMatchStartedEvent(donationMatchUpdate)
+                    .valueOf();
+
+                // Log the event
+                const days: number = Math.floor(eventDetails.remainingTime / 86400);
+                const hours: number = Math.floor(eventDetails.remainingTime / 3600) - days * 24;
+                const minutes: number = Math.floor(eventDetails.remainingTime / 60) - days * 1440 - hours * 60;
+                const seconds: number = Math.floor(eventDetails.remainingTime) - days * 86400 - hours * 3600 - minutes * 60;
+                logger.info(`A donation match has started : ${eventDetails.matchedBy} will match up to $${eventDetails.pledgedAmount} for campaign ${
+                    eventDetails.campaignInfo.name} for the next ${days > 0 ? `${days} days, ` : ""}${hours}h ${minutes}m ${seconds}s`);
+
+                // Trigger the event
+                eventManager.triggerEvent(
+                    TILTIFY_EVENT_SOURCE_ID,
+                    TILTIFY_MATCH_STARTED_EVENT_ID,
+                    eventDetails,
+                    false
+                );
             }
         } else {
             // It's a previously unknown match
             if (donationMatchUpdate.active) {
                 // The donation match started
-                const eventDetails = {}; // Todo: Raise Match started event
+
+                // Create the donation started event
+                const eventDetails: TiltifyDonationMatchEventData = new CampaignEvent(
+                    this.pollerData[campaignId].campaign,
+                    this.pollerData[campaignId].cause
+                )
+                    .createMatchStartedEvent(donationMatchUpdate)
+                    .valueOf();
+
+                // Log the event
+                const days: number = Math.floor(eventDetails.remainingTime / 86400);
+                const hours: number = Math.floor(eventDetails.remainingTime / 3600) - days * 24;
+                const minutes: number = Math.floor(eventDetails.remainingTime / 60) - days * 1440 - hours * 60;
+                const seconds: number = Math.floor(eventDetails.remainingTime) - days * 86400 - hours * 3600 - minutes * 60;
+                logger.info(`A donation match has started : ${eventDetails.matchedBy} will match up to $${eventDetails.pledgedAmount} for campaign ${
+                    eventDetails.campaignInfo.name} for the next ${days > 0 ? `${days} days, ` : ""}${hours}h ${minutes}m ${seconds}s`);
+
+                // Trigger the event
+                eventManager.triggerEvent(
+                    TILTIFY_EVENT_SOURCE_ID,
+                    TILTIFY_MATCH_STARTED_EVENT_ID,
+                    eventDetails,
+                    false
+                );
             } else if (donationMatchUpdate.completed_at !== null) {
                 // The donation match started and ended
-                const eventDetails = {}; // Todo: Raise match ended event or raise match started and ended event or ignore it ?
+
+                // Create the donation started event
+                const eventStartedDetails: TiltifyDonationMatchEventData = new CampaignEvent(
+                    this.pollerData[campaignId].campaign,
+                    this.pollerData[campaignId].cause
+                )
+                    .createMatchStartedEvent(donationMatchUpdate)
+                    .valueOf();
+
+                // Log the event
+                const days: number = Math.floor(eventStartedDetails.remainingTime / 86400);
+                const hours: number = Math.floor(eventStartedDetails.remainingTime / 3600) - days * 24;
+                const minutes: number = Math.floor(eventStartedDetails.remainingTime / 60) - days * 1440 - hours * 60;
+                const seconds: number = Math.floor(eventStartedDetails.remainingTime) - days * 86400 - hours * 3600 - minutes * 60;
+                logger.info(`A donation match has started : ${eventStartedDetails.matchedBy} will match up to $${eventStartedDetails.pledgedAmount} for campaign ${
+                    eventStartedDetails.campaignInfo.name} for the next ${days > 0 ? `${days} days, ` : ""}${hours}h ${minutes}m ${seconds}s`);
+
+                // Trigger the event
+                eventManager.triggerEvent(
+                    TILTIFY_EVENT_SOURCE_ID,
+                    TILTIFY_MATCH_STARTED_EVENT_ID,
+                    eventStartedDetails,
+                    false
+                );
+
+                // Create the donation ended event
+                const eventEndedDetails: TiltifyDonationMatchEventData = new CampaignEvent(
+                    this.pollerData[campaignId].campaign,
+                    this.pollerData[campaignId].cause
+                )
+                    .createMatchEndedEvent(donationMatchUpdate)
+                    .valueOf();
+
+                // Log the event
+                logger.info(`A donation match has ended : ${eventEndedDetails.matchedBy} has matched $${
+                    eventEndedDetails.amountMatched} / $${eventEndedDetails.pledgedAmount} for campaign ${eventEndedDetails.campaignInfo.name}.`);
+
+                // Trigger the event
+                eventManager.triggerEvent(
+                    TILTIFY_EVENT_SOURCE_ID,
+                    TILTIFY_MATCH_ENDED_EVENT_ID,
+                    eventEndedDetails,
+                    false
+                );
             }
         }
         // Update the poller data
