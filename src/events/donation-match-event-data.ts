@@ -100,7 +100,8 @@ export class MatchEvent {
     data: TiltifyDonationMatchEventData;
 
     constructor(matchData: TiltifyDonationMatch, campaignEvent: CampaignEvent) {
-        const nowTimestamp: number = new Date().getTime();
+        // hasExpired refers to the time remaining when it expires. If it expired, ends_at === completed_at
+        const nowTimestamp: number = matchData.completed_at ? new Date(matchData.completed_at).getTime() : new Date().getTime();
         const endTimestamp: number = new Date(matchData.ends_at).getTime();
         const amountPledged: number = Number(matchData.pledged_amount?.value ?? 0);
         const amountMatched: number = Number(matchData.total_amount_raised?.value ?? 0);

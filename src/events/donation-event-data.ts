@@ -133,6 +133,7 @@ export class DonationEvent {
                 return rewardClaimEventData;
             }) ?? [],
             matches: donationData?.donation_matches?.map<TiltifyDonationMatchData>((match) => {
+                // hasExpired refers to the time remaining when the donation was made. If it expired, ends_at === completed_at
                 const nowTimestamp: number = donationData.completed_at ? new Date(donationData.completed_at).getTime() : new Date().getTime();
                 const endTimestamp: number = new Date(match.ends_at).getTime();
                 const amountPledged: number = Number(match.pledged_amount?.value ?? 0);
