@@ -32,7 +32,7 @@ import {
 import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
 import { TiltifyAuthManager } from "./auth-manager";
 import { TILTIFY_INTEGRATION_ID } from "./constants";
-import { TiltifyDonnationMatchCollection } from "./types/donation-match";
+import { TiltifyDonationMatchCollection } from "./types/donation-match";
 
 /**
  * Description placeholder
@@ -456,9 +456,9 @@ export class TiltifyIntegration
      * @public
      * @async
      * @param {string} campaignId
-     * @returns {Promise<{ lastDonationMatchUpdate: string; savedDonationMatches: TiltifyDonnationMatchCollection }>}
+     * @returns {Promise<{ lastDonationMatchUpdate: string; savedDonationMatches: TiltifyDonationMatchCollection }>}
      */
-    async loadSavedDonationMatches(campaignId: string): Promise<{ lastDonationMatchUpdate: string, savedDonationMatches: TiltifyDonnationMatchCollection }> {
+    async loadSavedDonationMatches(campaignId: string): Promise<{ lastDonationMatchUpdate: string, savedDonationMatches: TiltifyDonationMatchCollection }> {
         let lastDonationMatchUpdate: string;
         try {
             lastDonationMatchUpdate = (await this.db.get(
@@ -472,9 +472,9 @@ export class TiltifyIntegration
         }
 
         // Loading the IDs of known donations for this campaign
-        let savedDonationMatches: TiltifyDonnationMatchCollection | undefined;
+        let savedDonationMatches: TiltifyDonationMatchCollection | undefined;
         try {
-            savedDonationMatches = (await this.db.get(`/tiltify/${campaignId}/donationMatches`)) as TiltifyDonnationMatchCollection;
+            savedDonationMatches = (await this.db.get(`/tiltify/${campaignId}/donationMatches`)) as TiltifyDonationMatchCollection;
         } catch {
             logger.debug(
                 `No donation matches saved for campaign ${campaignId}. Initializing database. `
@@ -497,13 +497,13 @@ export class TiltifyIntegration
      *
      * @public
      * @param {string} campaignId
-     * @param {{ lastDonationMatchUpdate: string; donationMatches: TiltifyDonnationMatchCollection }} param0
+     * @param {{ lastDonationMatchUpdate: string; donationMatches: TiltifyDonationMatchCollection }} param0
      * @param {string} param0.lastDonationMatchUpdate
-     * @param {TiltifyDonnationMatchCollection} param0.donationMatches
+     * @param {TiltifyDonationMatchCollection} param0.donationMatches
      */
     public saveDonationMatches(
         campaignId: string,
-        { lastDonationMatchUpdate, donationMatches }: { lastDonationMatchUpdate: string; donationMatches: TiltifyDonnationMatchCollection }
+        { lastDonationMatchUpdate, donationMatches }: { lastDonationMatchUpdate: string; donationMatches: TiltifyDonationMatchCollection }
     ): void {
         try {
             this.db.set(`/tiltify/${campaignId}/donationMatches`, donationMatches);

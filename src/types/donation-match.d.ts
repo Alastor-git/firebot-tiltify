@@ -21,7 +21,7 @@ export type TiltifyDonationMatch = {
     total_amount_raised: TiltifyMoney; // The amount of money that has been matched so far
 };
 
-export type TiltifyDonnationMatchCollection = {[matchId: string]: TiltifyDonationMatch};
+export type TiltifyDonationMatchCollection = {[matchId: string]: TiltifyDonationMatch};
 
 /*
  * Polling Starts :

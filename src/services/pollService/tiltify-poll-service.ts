@@ -28,7 +28,7 @@ import { CampaignEvent } from "@/events/campaign-event-data";
 import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
 import { TiltifyAPIError } from "@/shared/errors";
-import { TiltifyDonationMatch, TiltifyDonnationMatchCollection } from "@/types/donation-match";
+import { TiltifyDonationMatch, TiltifyDonationMatchCollection } from "@/types/donation-match";
 
 /**
  * Description placeholder
@@ -422,7 +422,7 @@ export class TiltifyPollService extends AbstractPollService {
     protected async loadDonationMatches(campaignId: string, verbose: boolean = true): Promise<void> {
         // Load saved donation matches if any
         // They are saved to keep memory of which matches have previously been reached so we know what events to trigger
-        const { lastDonationMatchUpdate, savedDonationMatches }: { lastDonationMatchUpdate: string, savedDonationMatches: TiltifyDonnationMatchCollection } =
+        const { lastDonationMatchUpdate, savedDonationMatches }: { lastDonationMatchUpdate: string, savedDonationMatches: TiltifyDonationMatchCollection } =
             await tiltifyIntegration().loadSavedDonationMatches(campaignId);
         this.pollerData[campaignId].donationMatches = savedDonationMatches;
         this.pollerData[campaignId].lastDonationMatchUpdate = lastDonationMatchUpdate;
@@ -470,6 +470,7 @@ export class TiltifyPollService extends AbstractPollService {
             }
         } else {
             // Update donation matches if there has been no new donations this cycle
+            // TODO: Don't do it every cycle ? 
             this.updateDonationMatches(campaignId);
         }
 
@@ -519,6 +520,10 @@ export class TiltifyPollService extends AbstractPollService {
         // If there are donation matches, process them
         if (donation.donation_matches) {
             for (const donationMatch of donation.donation_matches) {
+                if (donation.completed_at !== null) {
+                    // eslint-disable-next-line camelcase
+                    donationMatch.updated_at = donation.completed_at;
+                }
                 await this.processDonationMatchUpdate(campaignId, donationMatch);
                 logger.debug(`Donation of $${donation.amount?.value ?? 0} by ${donation.donor_name} matched by ${donationMatch.matched_by}. Matching until $${donationMatch.pledged_amount?.value ?? 0} or ${donationMatch.ends_at}. $${donationMatch.total_amount_raised?.value ?? 0} matched so far. `);
             }
@@ -706,7 +711,6 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                     campaignId,
                     lastDonationMatchUpdate !== "" ? new Date(new Date(lastDonationMatchUpdate).getTime() + 1).toJSON() : undefined
                 );
-            // FIXME : It appears updated_at lies and we can't rely on it to specify updated_after parameter to the API. 
 
             donationMatchUpdates = donationMatchUpdates.sort(
                 (a, b) =>
@@ -748,6 +752,12 @@ Cause: ${eventDetails.campaignInfo.cause}`);
         if (donationMatchUpdate.id in this.pollerData[campaignId].donationMatches) {
             // It's an update to an existing donation match
             const savedDonationMatch: TiltifyDonationMatch = this.pollerData[campaignId].donationMatches[donationMatchUpdate.id];
+
+            // Don't update if the updated data outdated
+            if (new Date(donationMatchUpdate.updated_at).getTime() <= new Date(savedDonationMatch.updated_at).getTime()) {
+                return;
+            }
+
             if (savedDonationMatch.active && !donationMatchUpdate.active) {
                 // The donation match completed
                 const eventDetails = {}; // TODO: Raise match completed event
