@@ -560,7 +560,7 @@ export class TiltifyPollService extends AbstractPollService {
 
             // Log the event
             logger.info(`A donation match has ended : ${eventDetails.matchedBy} has matched $${
-                eventDetails.amountMatched} / $${eventDetails.pledgedAmount} for campaign ${eventDetails.campaignInfo.name}.`);
+                eventDetails.amountMatched} / $${eventDetails.amountPledged} for campaign ${eventDetails.campaignInfo.name}.`);
 
             // Trigger the event
             eventManager.triggerEvent(
@@ -600,7 +600,7 @@ export class TiltifyPollService extends AbstractPollService {
 
         logger.info(`Donation: 
 From ${eventDetails.from} for $${eventDetails.donationAmount}. 
-Matches : x${eventDetails.matches.length + 1} by ${eventDetails.matches.map(match => match.matchedBy).join(", ")}. 
+Matching : x${eventDetails.matchMultiplier}${eventDetails.matchMultiplier === 1 ? "" : ` by ${eventDetails.matches.map(match => match.matchedBy).join(", ")}`}. 
 Total raised : $${eventDetails.campaignInfo.amountRaised}
 Rewards: ${eventDetails.rewards.map(rewardClaim => `${rewardClaim.quantityRedeemed} * ${rewardClaim.name ?? rewardClaim.id}`).join(", ")}
 Campaign : ${eventDetails.campaignInfo.name}
@@ -793,7 +793,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
 
                 // Log the event
                 logger.info(`A donation match has ended : ${eventDetails.matchedBy} has matched $${
-                    eventDetails.amountMatched} / $${eventDetails.pledgedAmount} for campaign ${eventDetails.campaignInfo.name}.`);
+                    eventDetails.amountMatched} / $${eventDetails.amountPledged} for campaign ${eventDetails.campaignInfo.name}.`);
 
                 // Trigger the event
                 eventManager.triggerEvent(
@@ -818,7 +818,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                 const hours: number = Math.floor(eventDetails.remainingTime / 3600) - days * 24;
                 const minutes: number = Math.floor(eventDetails.remainingTime / 60) - days * 1440 - hours * 60;
                 const seconds: number = Math.floor(eventDetails.remainingTime) - days * 86400 - hours * 3600 - minutes * 60;
-                logger.info(`A donation match has started : ${eventDetails.matchedBy} will match up to $${eventDetails.pledgedAmount} for campaign ${
+                logger.info(`A donation match has started : ${eventDetails.matchedBy} will match up to $${eventDetails.amountPledged} for campaign ${
                     eventDetails.campaignInfo.name} for the next ${days > 0 ? `${days} days, ` : ""}${hours}h ${minutes}m ${seconds}s`);
 
                 // Trigger the event
@@ -847,7 +847,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                 const hours: number = Math.floor(eventDetails.remainingTime / 3600) - days * 24;
                 const minutes: number = Math.floor(eventDetails.remainingTime / 60) - days * 1440 - hours * 60;
                 const seconds: number = Math.floor(eventDetails.remainingTime) - days * 86400 - hours * 3600 - minutes * 60;
-                logger.info(`A donation match has started : ${eventDetails.matchedBy} will match up to $${eventDetails.pledgedAmount} for campaign ${
+                logger.info(`A donation match has started : ${eventDetails.matchedBy} will match up to $${eventDetails.amountPledged} for campaign ${
                     eventDetails.campaignInfo.name} for the next ${days > 0 ? `${days} days, ` : ""}${hours}h ${minutes}m ${seconds}s`);
 
                 // Trigger the event
@@ -873,7 +873,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                 const hours: number = Math.floor(eventStartedDetails.remainingTime / 3600) - days * 24;
                 const minutes: number = Math.floor(eventStartedDetails.remainingTime / 60) - days * 1440 - hours * 60;
                 const seconds: number = Math.floor(eventStartedDetails.remainingTime) - days * 86400 - hours * 3600 - minutes * 60;
-                logger.info(`A donation match has started : ${eventStartedDetails.matchedBy} will match up to $${eventStartedDetails.pledgedAmount} for campaign ${
+                logger.info(`A donation match has started : ${eventStartedDetails.matchedBy} will match up to $${eventStartedDetails.amountPledged} for campaign ${
                     eventStartedDetails.campaignInfo.name} for the next ${days > 0 ? `${days} days, ` : ""}${hours}h ${minutes}m ${seconds}s`);
 
                 // Trigger the event
@@ -894,7 +894,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
 
                 // Log the event
                 logger.info(`A donation match has ended : ${eventEndedDetails.matchedBy} has matched $${
-                    eventEndedDetails.amountMatched} / $${eventEndedDetails.pledgedAmount} for campaign ${eventEndedDetails.campaignInfo.name}.`);
+                    eventEndedDetails.amountMatched} / $${eventEndedDetails.amountPledged} for campaign ${eventEndedDetails.campaignInfo.name}.`);
 
                 // Trigger the event
                 eventManager.triggerEvent(

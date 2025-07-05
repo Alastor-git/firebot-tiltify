@@ -29,6 +29,7 @@ export type TiltifyDonationEventData = TiltifyCampaignEventData & {
     donationAmount: number;
     rewards: TiltifyRewardClaimEventData[];
     matches: TiltifyDonationMatchData[];
+    matchMultiplier: number;
     comment: string;
     pollOptionId: string;
     challengeId: string;
@@ -50,6 +51,7 @@ const getManualMetadata: TiltifyDonationEventData = {
         }
     ],
     matches: [],
+    matchMultiplier: 1,
     comment: "Thanks for the stream!",
     pollOptionId: "",
     challengeId: ""
@@ -57,8 +59,7 @@ const getManualMetadata: TiltifyDonationEventData = {
 
 function getMessage(eventData: TiltifyDonationEventData) {
     return `**${eventData.from}** donated **$${eventData.donationAmount}** to ${eventData.campaignInfo.name}${
-        eventData.matches.length === 0 ? "" :
-            ` matched x${eventData.matches.length + 1}`
+        eventData.matchMultiplier === 1 ? "" : ` matched x${eventData.matchMultiplier}`
     }${
         eventData.rewards.length === 0 ? "" :
             eventData.rewards.length === 1 && eventData.rewards[0].quantityRedeemed <= 1 ?
@@ -132,15 +133,24 @@ export class DonationEvent {
                 return rewardClaimEventData;
             }) ?? [],
             matches: donationData?.donation_matches?.map<TiltifyDonationMatchData>((match) => {
+                const nowTimestamp: number = donationData.completed_at ? new Date(donationData.completed_at).getTime() : new Date().getTime();
+                const endTimestamp: number = new Date(match.ends_at).getTime();
+                const amountPledged: number = Number(match.pledged_amount?.value ?? 0);
+                const amountMatched: number = Number(match.total_amount_raised?.value ?? 0);
                 const matchData: TiltifyDonationMatchData = {
+                    id: match.id,
                     matchedBy: match.matched_by,
-                    pledgedAmount: Number(match.pledged_amount?.value ?? 0),
-                    amountMatched: Number(match.total_amount_raised?.value ?? 0),
-                    endsAtTimestamp: new Date(match.ends_at).getTime() / 1000,
-                    remainingTime: match.active ? (new Date(match.ends_at).getTime() - new Date().getTime()) / 1000 : 0
+                    amountPledged: amountPledged,
+                    amountMatched: amountMatched,
+                    endTimestamp: Math.floor(endTimestamp / 1000),
+                    remainingTime: match.active ? Math.floor((endTimestamp - nowTimestamp) / 1000) : 0,
+                    isActive: match.active,
+                    hasCompleted: !match.active && amountPledged === amountMatched,
+                    hasExpired: !match.active && endTimestamp <= nowTimestamp
                 };
                 return matchData;
             }) ?? [],
+            matchMultiplier: (donationData?.donation_matches?.length ?? 0) + 1,
             comment: donationData?.donor_comment ?? "",
             pollOptionId: donationData?.poll_option_id ?? "",
             challengeId: donationData?.target_id ?? ""
