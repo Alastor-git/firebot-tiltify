@@ -432,6 +432,27 @@ export class TiltifyPollService extends AbstractPollService {
 
         // Populate info about the Matches.
         await this.updateDonationMatches(campaignId);
+
+        if (verbose) {
+            logger.debug(
+                "Donation Matches: ".concat(
+                    Object.values(this.pollerData[campaignId].donationMatches).map(
+                            match => `
+    ID: ${match.id}
+    Name: ${match.matched_by}
+    Started At: $${match.started_at_amount?.value ?? 0}
+    Pledged   : $${match.pledged_amount?.value ?? 0}
+    Matched   : $${match.total_amount_raised?.value ?? 0}
+    Created On  : ${new Date(match.inserted_at).toUTCString()}
+    Expires On  : ${new Date(match.ends_at).toUTCString()}${
+        match.completed_at ? `
+    Completed On: ${new Date(match.completed_at).toUTCString()}` : ""
+    }
+    Active: ${match.active}`
+                        ).join("\n")
+                )
+            );
+        }
     }
 
     /**
