@@ -1,4 +1,4 @@
-import { AbstractPollService } from "./poll-service";
+import { PollingOptions, AbstractPollService } from "./poll-service";
 import { eventManager } from "@shared/firebot-modules";
 import { logger } from "@/tiltify-logger";
 
@@ -33,6 +33,12 @@ import { TiltifyAPIError } from "@/shared/errors";
 import { TiltifyDonationMatch, TiltifyDonationMatchCollection } from "@/types/donation-match";
 import { TiltifyDonationMatchEventData } from "@/events/donation-match-event-data";
 
+type TiltifyPollingOptions = PollingOptions & {
+    donationMatchesPollingMultiplier: number; // How many cycles do we wait before attempting to refresh donation matches
+    milestonesPollingMultiplier: number; // How many cycles do we wait before attempting to refresh milestones
+    verboseMode: boolean; // Do we do the optionnal logs that are mostly useful for development?
+}
+
 /**
  * Description placeholder
  *
@@ -41,7 +47,7 @@ import { TiltifyDonationMatchEventData } from "@/events/donation-match-event-dat
  * @typedef {TiltifyPollService}
  * @extends {AbstractPollService}
  */
-export class TiltifyPollService extends AbstractPollService {
+export class TiltifyPollService extends AbstractPollService<TiltifyPollingOptions> {
     /**
      * Description placeholder
      *
@@ -71,6 +77,18 @@ export class TiltifyPollService extends AbstractPollService {
      */
     declare protected pollerStarted: { [campaignId: string]: boolean };
 
+
+    protected static getDefaultPollingOptions(): TiltifyPollingOptions {
+        const options: TiltifyPollingOptions = {
+            ...AbstractPollService.getDefaultPollingOptions(),
+            // Parent's default polling options can be overwritten here
+            donationMatchesPollingMultiplier: 3, // How many cycles do we wait before attempting to refresh donation matches
+            milestonesPollingMultiplier: 10, // How many cycles do we wait before attempting to refresh milestones
+            verboseMode: true // TODO: Make this configurable?
+        };
+        return options;
+    }
+
     /**
      * Creates an instance of TiltifyPollService.
      *
@@ -78,7 +96,7 @@ export class TiltifyPollService extends AbstractPollService {
      * @private
      */
     private constructor() {
-        super();
+        super(TiltifyPollService.getDefaultPollingOptions);
     }
 
     /**
@@ -123,6 +141,8 @@ export class TiltifyPollService extends AbstractPollService {
 
         // If impossible, disconnect the campaign
         try {
+            const verbose: boolean = this.pollingOptions[campaignId].verboseMode;
+
             // Load info about the campaign.
             this.pollerData[campaignId] = await this.loadCampaign(
                 this.pollerData[campaignId]
@@ -132,11 +152,11 @@ export class TiltifyPollService extends AbstractPollService {
                 this.pollerData[campaignId]
             );
             // Load info about the rewards.
-            await this.loadRewards(campaignId);
+            await this.loadRewards(campaignId, verbose);
             // Load info about the Milestones.
-            await this.loadMilestones(campaignId);
+            await this.loadMilestones(campaignId, verbose);
             // Load info about donation matches
-            await this.loadDonationMatches(campaignId);
+            await this.loadDonationMatches(campaignId, verbose);
         } catch (error) {
             logger.debug(
                 `Stopped polling ${campaignId} because of an error.`
