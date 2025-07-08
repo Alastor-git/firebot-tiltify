@@ -111,7 +111,7 @@ export class TiltifyAuthManager {
      * @returns {boolean}
      */
     static tokenExpired(token: AuthDetails): boolean {
-        return token.expires_at ? token.expires_at - 1000 < new Date().getTime() : true;
+        return token.expires_at ? token.expires_at - 1000 < Date.now() : true;
     }
 
     /**
@@ -135,7 +135,7 @@ export class TiltifyAuthManager {
             accessTokenData.created_at = new Date(tokenData.created_at).getTime(); // eslint-disable-line camelcase
         // If no info, assume it's created now
         } else {
-            accessTokenData.created_at = new Date().getTime(); // eslint-disable-line camelcase
+            accessTokenData.created_at = Date.now(); // eslint-disable-line camelcase
         }
         // Perpetuate expires_in as defined by RFC6749
         if (tokenData?.expires_in) {
