@@ -34,9 +34,18 @@ import { TiltifyDonationMatch, TiltifyDonationMatchCollection } from "@/types/do
 import { TiltifyDonationMatchEventData } from "@/events/donation-match-event-data";
 
 type TiltifyPollingOptions = PollingOptions & {
-    donationMatchesPollingMultiplier: number; // How many cycles do we wait before attempting to refresh donation matches
-    milestonesPollingMultiplier: number; // How many cycles do we wait before attempting to refresh milestones
-    verboseMode: boolean; // Do we do the optionnal logs that are mostly useful for development?
+    /**
+     * How many cycles do we wait before attempting to refresh donation matches
+     */
+    donationMatchesPollingMultiplier: number;
+    /**
+     * How many cycles do we wait before attempting to refresh milestones
+     */
+    milestonesPollingMultiplier: number;
+    /**
+     * Do we do the optionnal logs that are mostly useful for development?
+     */
+    verboseMode: boolean;
 }
 
 /**

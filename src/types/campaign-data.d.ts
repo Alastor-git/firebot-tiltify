@@ -12,7 +12,13 @@ export type TiltifyCampaignData = {
     milestones: TiltifyMilestone[];
     rewards: TiltifyCampaignReward[];
     donationMatches: TiltifyDonationMatchCollection;
+    /**
+     * JSON representation of the last time a donation match update happened
+     */
     lastDonationMatchUpdate: string;
+    /**
+     * JSON representation of the last time a donation update happened
+     */
     lastDonationDate: string;
     donationIds: string[];
 };

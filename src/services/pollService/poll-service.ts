@@ -13,10 +13,26 @@ type PollerStatus = {
 };
 
 export type PollingOptions = {
-    pollingInterval: number; // Interval in ms between 2 polling cycles
-    maxRetries: number; // Maximum number of allowed retries
-    maxDelay: number; // Maximum retry delay in ms
-    initalDelay: number // Initial retry delay in ms
+    /**
+     * Interval in ms between 2 polling cycles
+     *
+     */
+    pollingInterval: number;
+    /**
+     * Maximum number of allowed retries in case of connection failure
+     *
+     */
+    maxRetries: number;
+    /**
+     * Maximum retry delay in case of connection failure in ms
+     *
+     */
+    maxDelay: number;
+    /**
+     * Initial retry delay in case of connection failure in ms
+     *
+     */
+    initalDelay: number
 };
 
 export abstract class AbstractPollService<Options extends PollingOptions = PollingOptions> extends TypedEmitter<PollingEvents> {
