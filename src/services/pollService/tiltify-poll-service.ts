@@ -91,8 +91,9 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
         const options: TiltifyPollingOptions = {
             ...AbstractPollService.getDefaultPollingOptions(),
             // Parent's default polling options can be overwritten here
-            donationMatchesPollingMultiplier: 3, // How many cycles do we wait before attempting to refresh donation matches
-            milestonesPollingMultiplier: 10, // How many cycles do we wait before attempting to refresh milestones
+            donationMatchesPollingMultiplier: 3, // TODO: Make this configurable ? 
+            // TODO: Implement the milestones polling multiplier
+            milestonesPollingMultiplier: 10, // TODO: Make this configurable ? 
             verboseMode: true // TODO: Make this configurable?
         };
         return options;
@@ -144,6 +145,7 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
             lastDonationMatchUpdate: "",
             donationMatches: {},
             lastDonationDate: "",
+            lastDonationMatchPoll: 0,
             donationIds: []
         };
         // Populate the poller's data
@@ -493,18 +495,21 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
      * @throws {Error} if donations can't be updated
      */
     async updateDonations(campaignId: string): Promise<void> {
+        const pollerData = this.pollerData[campaignId];
+        const pollingOptions: TiltifyPollingOptions = this.pollingOptions[campaignId];
+
         // Load the last donation date if available
         const { lastDonationDate, ids }: {lastDonationDate: string, ids: string[]} =
             await tiltifyIntegration().loadSavedDonations(campaignId);
-        this.pollerData[campaignId].lastDonationDate = lastDonationDate;
-        this.pollerData[campaignId].donationIds = ids;
+        pollerData.lastDonationDate = lastDonationDate;
+        pollerData.donationIds = ids;
 
         let donations: TiltifyDonation[];
         try {
             // Acquire the donations since the last saved from Tiltify and sort them by date.
             donations = await tiltifyAPIController().getCampaignDonations(
                 campaignId,
-                new Date(new Date(this.pollerData[campaignId].lastDonationDate).getTime() + 1).toJSON()
+                new Date(new Date(pollerData.lastDonationDate).getTime() + 1).toJSON()
             );
         } catch (error) {
             logger.debug("API error while updating donations. ");
@@ -515,16 +520,17 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
             // update the campaign data if there have been new donations
             try {
                 // A donation has happened. Reload campaign info to update collected amounts
-                this.pollerData[campaignId].campaign =
+                pollerData.campaign =
                     await tiltifyAPIController().getCampaign(campaignId);
             } catch (error) {
                 logger.debug("API error while updating campaign data. ");
                 throw error;
             }
         } else {
-            // Update donation matches if there has been no new donations this cycle
-            // TODO: Don't do it every cycle ? 
-            this.updateDonationMatches(campaignId);
+            // Update donation matches if there has been no new donations this cycle and enough time has happened since we last got a donation match
+            if (pollerData.lastDonationMatchPoll + pollingOptions.pollingInterval * pollingOptions.donationMatchesPollingMultiplier < Date.now()) {
+                await this.updateDonationMatches(campaignId);
+            }
         }
 
         const sortedDonations = donations.sort(
@@ -803,6 +809,8 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                         donationMatches: this.pollerData[campaignId].donationMatches
                     }
                 );
+            } else {
+                this.pollerData[campaignId].lastDonationMatchPoll = Date.now();
             }
         } catch (error) {
             logger.warn(
@@ -813,7 +821,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
     }
 
     /**
-     * Process a donation match update that has been received either from a dobnation of from an independant update.
+     * Process a donation match update that has been received either from a donation of from an independant update.
      *
      * @async
      * @param {string} campaignId
@@ -827,6 +835,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
 
             // Don't update if the updated data outdated
             if (new Date(donationMatchUpdate.updated_at).getTime() <= new Date(savedDonationMatch.updated_at).getTime()) {
+                this.pollerData[campaignId].lastDonationMatchPoll = Date.now();
                 return;
             }
 
@@ -958,6 +967,7 @@ Cause: ${eventDetails.campaignInfo.cause}`);
         // Update the poller data
         this.pollerData[campaignId].lastDonationMatchUpdate = donationMatchUpdate.updated_at;
         this.pollerData[campaignId].donationMatches[donationMatchUpdate.id] = donationMatchUpdate;
+        this.pollerData[campaignId].lastDonationMatchPoll = Date.now();
     }
 
     public checkIfIntegrationDisconnected(): void {

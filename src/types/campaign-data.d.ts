@@ -17,6 +17,10 @@ export type TiltifyCampaignData = {
      */
     lastDonationMatchUpdate: string;
     /**
+     * Timestamp of the last time a donation match was polled
+     */
+    lastDonationMatchPoll: number;
+    /**
      * JSON representation of the last time a donation update happened
      */
     lastDonationDate: string;
