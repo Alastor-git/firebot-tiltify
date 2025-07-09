@@ -146,6 +146,7 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
             donationMatches: {},
             lastDonationDate: "",
             lastDonationMatchPoll: 0,
+            lastMilestonePoll: 0,
             donationIds: []
         };
         // Populate the poller's data
@@ -412,6 +413,8 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
                 )
             );
         }
+        // Update the last time milestones were polled
+        this.pollerData[campaignId].lastMilestonePoll = Date.now();
     }
 
     /**
@@ -712,22 +715,23 @@ Cause : ${eventDetails.campaignInfo.cause}`);
      * @throws {Error} if milestones can't be loaded or if database error
      */
     async updateMilestones(campaignId: string): Promise<void> {
-        // FIXME: We appear to never reload the list of milestones from the API unless one is triggered (second timer ?)
+        const pollerData = this.pollerData[campaignId];
+        const pollingOptions: TiltifyPollingOptions = this.pollingOptions[campaignId];
         const savedMilestones: TiltifyMilestone[] =
             await tiltifyIntegration().loadSavedMilestones(campaignId);
         const milestoneTriggered = { value: false };
         for (const milestone of savedMilestones) {
             this.processMilestone(campaignId, milestone, milestoneTriggered);
         }
-        if (milestoneTriggered.value) {
+        if (milestoneTriggered.value || pollerData.lastMilestonePoll + pollingOptions.pollingInterval * pollingOptions.milestonesPollingMultiplier < Date.now()) {
             // if we triggered a milestone, we want to silently reload the milestones from tiltify.
             await this.loadMilestones(campaignId, false);
         } else {
-            this.pollerData[campaignId].milestones = savedMilestones;
+            pollerData.milestones = savedMilestones;
             // Save the milestones
             tiltifyIntegration().saveMilestones(
                 campaignId,
-                this.pollerData[campaignId].milestones
+                pollerData.milestones
             );
         }
     }
