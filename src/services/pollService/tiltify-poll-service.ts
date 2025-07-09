@@ -187,9 +187,18 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
      */
     protected async poll(campaignId: string): Promise<void> {
         // TODO : Poll here the data from Tiltify
+        const pollerData = this.pollerData[campaignId];
+        const pollingOptions: TiltifyPollingOptions = this.pollingOptions[campaignId];
         try {
             // Check for new donations
+            // This updates Donation Matches if we receive data
             await this.updateDonations(campaignId);
+
+            // Update donation matches if enough time has happened since we last got a donation match data
+            // The update may have already been performed by receiving new donations
+            if (pollerData.lastDonationMatchPoll + pollingOptions.pollingInterval * pollingOptions.donationMatchesPollingMultiplier < Date.now()) {
+                await this.updateDonationMatches(campaignId);
+            }
 
             // Check for milestones reached
             await this.updateMilestones(campaignId);
@@ -526,11 +535,6 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
                 logger.debug("API error while updating campaign data. ");
                 throw error;
             }
-        } else {
-            // Update donation matches if there has been no new donations this cycle and enough time has happened since we last got a donation match
-            if (pollerData.lastDonationMatchPoll + pollingOptions.pollingInterval * pollingOptions.donationMatchesPollingMultiplier < Date.now()) {
-                await this.updateDonationMatches(campaignId);
-            }
         }
 
         const sortedDonations = donations.sort(
@@ -587,7 +591,8 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
                 logger.debug(`Donation of $${donation.amount?.value ?? 0} by ${donation.donor_name} matched by ${donationMatch.matched_by}. Matching until $${donationMatch.pledged_amount?.value ?? 0} or ${donationMatch.ends_at}. $${donationMatch.total_amount_raised?.value ?? 0} matched so far. `);
             }
         }
-        // Donation matches that are active but don't matvch the current donation are expired
+        // TODO: Isolate in own function
+        // Donation matches that are active but don't match the current donation are expired
         const updatedDonationMatchIds: string[] = donation.donation_matches?.map(donationMatch => donationMatch.id) ?? [];
         const expiredDonationMatches: TiltifyDonationMatch[] = Object.values(this.pollerData[campaignId].donationMatches).filter((donationMatch) => {
             return (
@@ -809,9 +814,9 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                         donationMatches: this.pollerData[campaignId].donationMatches
                     }
                 );
-            } else {
-                this.pollerData[campaignId].lastDonationMatchPoll = Date.now();
             }
+            // Update the last time we polled donation matches
+            this.pollerData[campaignId].lastDonationMatchPoll = Date.now();
         } catch (error) {
             logger.warn(
                 `Information about Donation Matches for ${campaignId} couldn't be retrieved or are invalid. Message: ${error.message}`
@@ -833,9 +838,12 @@ Cause: ${eventDetails.campaignInfo.cause}`);
             // It's an update to an existing donation match
             const savedDonationMatch: TiltifyDonationMatch = this.pollerData[campaignId].donationMatches[donationMatchUpdate.id];
 
+            // Whatever happens next, we processed donation match data (through donation or update), so update the last time we polled it
+            this.pollerData[campaignId].lastDonationMatchPoll = Date.now();
+
             // Don't update if the updated data outdated
+            // That seems to be an issue with Tiltify API
             if (new Date(donationMatchUpdate.updated_at).getTime() <= new Date(savedDonationMatch.updated_at).getTime()) {
-                this.pollerData[campaignId].lastDonationMatchPoll = Date.now();
                 return;
             }
 
@@ -967,7 +975,6 @@ Cause: ${eventDetails.campaignInfo.cause}`);
         // Update the poller data
         this.pollerData[campaignId].lastDonationMatchUpdate = donationMatchUpdate.updated_at;
         this.pollerData[campaignId].donationMatches[donationMatchUpdate.id] = donationMatchUpdate;
-        this.pollerData[campaignId].lastDonationMatchPoll = Date.now();
     }
 
     public checkIfIntegrationDisconnected(): void {
