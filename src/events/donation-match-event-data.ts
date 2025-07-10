@@ -12,16 +12,62 @@ import {
 } from "./campaign-event-data";
 
 export type TiltifyDonationMatchData = {
-    id: string // Tiltify ID of the match object
-    matchedBy: string; // Name of the person who's matching this donation
-    amountPledged: number; // Up to how much they are matching
-    amountMatched: number; // Amount that has been matched so far
-    endTimestamp: number; // Timestamp of the end of the matching in seconds
-    remainingTime: number; // Time remaining for the duration in seconds. 0 if the match has ended.
-    hasExpired: boolean; // Has the Match ended because the time ran out ?
-    hasCompleted: boolean; // Has the match ended because the pledged amount was reached ?
-    isActive: boolean; // Is the match still going on ?
+    /**
+     * Tiltify ID of the match object
+     */
+    id: string
+    /**
+     * Name of the person who's matching
+     */
+    matchedBy: string;
+    /**
+     * Maximum amount that's going to be matched before the matching completes
+     */
+    amountPledged: number;
+    /**
+     * Amount that has been matched so far
+     */
+    amountMatched: number;
+    /**
+     * UNIX Timestamp of the time the matching expires in seconds
+     */
+    endTimestamp: number;
+    /**
+     * Time remaining before the matching expires in seconds. 0 if the match has expired or completed.
+     */
+    remainingTime: number;
+    /**
+     * Has the Match ended because the end timestamp was reached ?
+     */
+    hasExpired: boolean;
+    /**
+     * Has the match ended because the pledged amount was reached ?
+     */
+    hasCompleted: boolean;
+    /**
+     * Is the match still going on ?
+     */
+    isActive: boolean;
 };
+
+export function createTiltifyDonationMatchData(donationMatch: TiltifyDonationMatch): TiltifyDonationMatchData {
+        // hasExpired refers to the time remaining when it expires. If it expired, ends_at === completed_at
+        const nowTimestamp: number = donationMatch.completed_at ? new Date(donationMatch.completed_at).getTime() : Date.now();
+        const endTimestamp: number = new Date(donationMatch.ends_at).getTime();
+        const amountPledged: number = Number(donationMatch.pledged_amount?.value ?? 0);
+        const amountMatched: number = Number(donationMatch.total_amount_raised?.value ?? 0);
+        return {
+            id: donationMatch.id,
+            matchedBy: donationMatch.matched_by,
+            amountPledged: amountPledged,
+            amountMatched: amountMatched,
+            endTimestamp: Math.floor(endTimestamp / 1000),
+            remainingTime: donationMatch.active ? Math.floor((endTimestamp - nowTimestamp) / 1000) : 0,
+            isActive: donationMatch.active,
+            hasCompleted: !donationMatch.active && amountPledged === amountMatched,
+            hasExpired: !donationMatch.active && endTimestamp <= nowTimestamp
+        };
+}
 
 export type TiltifyDonationMatchEventData = TiltifyCampaignEventData & TiltifyDonationMatchData;
 
@@ -100,22 +146,9 @@ export class MatchEvent {
     data: TiltifyDonationMatchEventData;
 
     constructor(matchData: TiltifyDonationMatch, campaignEvent: CampaignEvent) {
-        // hasExpired refers to the time remaining when it expires. If it expired, ends_at === completed_at
-        const nowTimestamp: number = matchData.completed_at ? new Date(matchData.completed_at).getTime() : Date.now();
-        const endTimestamp: number = new Date(matchData.ends_at).getTime();
-        const amountPledged: number = Number(matchData.pledged_amount?.value ?? 0);
-        const amountMatched: number = Number(matchData.total_amount_raised?.value ?? 0);
         this.data = {
             ...campaignEvent.valueOf(),
-            id: matchData.id,
-            matchedBy: matchData.matched_by,
-            amountPledged: amountPledged,
-            amountMatched: amountMatched,
-            endTimestamp: Math.floor(endTimestamp / 1000),
-            remainingTime: matchData.active ? Math.floor((endTimestamp - nowTimestamp) / 1000) : 0,
-            isActive: matchData.active,
-            hasCompleted: !matchData.active && amountPledged === amountMatched,
-            hasExpired: !matchData.active && endTimestamp <= nowTimestamp
+            ...createTiltifyDonationMatchData(matchData)
         };
     };
 
