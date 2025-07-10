@@ -59,13 +59,24 @@ export abstract class AbstractPollService<Options extends PollingOptions = Polli
     }
 
     // TODO: Shouldn't this be used instead of reconnecting when changing options ? 
-    public setPollingInterval(
+    public setPollingOptions(
         campaignId: string,
-        interval: number
+        pollingOptions: Partial<Options>,
+        resetPoller: boolean = false
     ) {
-        this.pollingOptions[campaignId].pollingInterval = interval;
-        // If polling is happening, reset the interval
-        if (this.poller != null) {
+        // Reset the moller if the pollingInterval has changed or if we forced it
+        resetPoller ||=
+            campaignId in this.pollingOptions
+            && 'pollingInterval' in pollingOptions
+            && this.pollingOptions[campaignId].pollingInterval !== pollingOptions.pollingInterval;
+        // Update the options with therequested changes
+        this.pollingOptions[campaignId] = {
+            ...this.pollingOptions[campaignId],
+            ...pollingOptions
+        };
+
+        // If polling is happening and a reset is required, reset the interval
+        if (this.poller != null && resetPoller) {
             clearInterval(this.poller[campaignId]);
             this.poller[campaignId] = setInterval(
                 () => this.poll(campaignId),
