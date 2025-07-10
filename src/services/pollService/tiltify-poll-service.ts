@@ -74,7 +74,7 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
      *         [campaignId: string]: PopulatingTiltifyCampaignData;
      *     }}
      */
-    declare protected pollerData: {
+    declare public pollerData: {
         [campaignId: string]: PopulatingTiltifyCampaignData;
     };
 
@@ -92,7 +92,6 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
             ...AbstractPollService.getDefaultPollingOptions(),
             // Parent's default polling options can be overwritten here
             donationMatchesPollingMultiplier: 3, // TODO: Make this configurable ? 
-            // TODO: Implement the milestones polling multiplier
             milestonesPollingMultiplier: 10, // TODO: Make this configurable ? 
             verboseMode: true // TODO: Make this configurable?
         };
