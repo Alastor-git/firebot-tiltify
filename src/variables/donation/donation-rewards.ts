@@ -51,7 +51,7 @@ Valid properties are 'id', 'name', 'quantityAvailable', 'quantityRemaining', 'qu
     evaluator: function (trigger, ...args): null | string | number | TiltifyRewardClaimEventData | (string | number | TiltifyRewardClaimEventData | null)[] {
         let index: number | null = null;
         let property: string | null = null;
-        // If we have a first argument, assign it to index or proerty depending on its type
+        // If we have a first argument, assign it to index or property depending on its type
         if (args.length >= 1) {
             // If the first argument is a string representing a number, convert it to a number
             if (!isNaN(parseFloat(args[0])) && isFinite(args[0])) {
@@ -59,17 +59,17 @@ Valid properties are 'id', 'name', 'quantityAvailable', 'quantityRemaining', 'qu
             }
             if (typeof args[0] === "number") {
                 index = args[0];
-            } else if (typeof args[0] === "string") {
+            } else if (typeof args[0] === "string" && args[0] !== '') {
                 property = args[0];
             }
         }
-        // If we have a second argument, assign it to index or proerty depending on its type
+        // If we have a second argument, assign it to index or property depending on its type
         if (args.length >= 2) {
             // If the second argument is a string representing a number, convert it to a number
             if (!isNaN(parseFloat(args[1])) && isFinite(args[1])) {
                 args[1] = parseFloat(args[1]);
             }
-            if (typeof args[1] === "string" && property === null) {
+            if (typeof args[1] === "string" && args[0] !== '' && property === null) {
                 property = args[1];
             } else if (typeof args[1] === "number" && index === null) {
                 index = args[1];
