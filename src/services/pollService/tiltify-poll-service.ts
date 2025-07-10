@@ -33,7 +33,7 @@ import { TiltifyAPIError } from "@/shared/errors";
 import { TiltifyDonationMatch, TiltifyDonationMatchCollection } from "@/types/donation-match";
 import { TiltifyDonationMatchEventData } from "@/events/donation-match-event-data";
 
-type TiltifyPollingOptions = PollingOptions & {
+export type TiltifyPollingOptions = PollingOptions & {
     /**
      * How many cycles do we wait before attempting to refresh donation matches
      */
@@ -91,9 +91,9 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
         const options: TiltifyPollingOptions = {
             ...AbstractPollService.getDefaultPollingOptions(),
             // Parent's default polling options can be overwritten here
-            donationMatchesPollingMultiplier: 3, // TODO: Make this configurable ? 
-            milestonesPollingMultiplier: 10, // TODO: Make this configurable ? 
-            verboseMode: true // TODO: Make this configurable?
+            donationMatchesPollingMultiplier: 3,
+            milestonesPollingMultiplier: 10,
+            verboseMode: true
         };
         return options;
     }

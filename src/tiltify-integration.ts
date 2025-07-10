@@ -29,10 +29,10 @@ import {
     eventManager,
     eventFilterManager
 } from "@shared/firebot-modules";
-import { FirebotParams } from "@crowbartools/firebot-custom-scripts-types/types/modules/firebot-parameters";
 import { TiltifyAuthManager } from "./auth-manager";
 import { TILTIFY_INTEGRATION_ID } from "./constants";
 import { TiltifyDonationMatchCollection } from "./types/donation-match";
+import { TiltifyPollingOptions } from "./services/pollService/tiltify-poll-service";
 
 /**
  * Description placeholder
@@ -43,6 +43,9 @@ import { TiltifyDonationMatchCollection } from "./types/donation-match";
 export type TiltifySettings = {
     integrationSettings: {
         pollInterval: number;
+        donationMatchesPollingMultiplier: number;
+        milestonesPollingMultiplier: number;
+        verboseMode: boolean;
     };
     campaignSettings: {
         campaignId: string;
@@ -246,7 +249,7 @@ export class TiltifyIntegration
         }
 
         // Checking the campaign Id is present.
-        const userSettings: FirebotParams = integrationData.userSettings;
+        const userSettings: TiltifySettings = integrationData.userSettings as TiltifySettings;
         const campaignId: string = userSettings.campaignSettings
             .campaignId as string;
         if (campaignId == null || campaignId === "") {
@@ -254,11 +257,17 @@ export class TiltifyIntegration
             this.disconnect();
             return;
         }
-        const pollInterval: number =
-            (userSettings.integrationSettings.pollInterval as number) * 1000;
+
+        const integrationSettings = userSettings.integrationSettings;
+        const pollingOptions: Partial<TiltifyPollingOptions> = {
+            pollingInterval: integrationSettings.pollInterval * 1000,
+            donationMatchesPollingMultiplier: integrationSettings.donationMatchesPollingMultiplier,
+            milestonesPollingMultiplier: integrationSettings.milestonesPollingMultiplier,
+            verboseMode: integrationSettings.verboseMode
+        };
 
         // This is the loop that updates. We register it now, but it's gonna update asynchronously
-        await tiltifyPollService().start(campaignId, pollInterval);
+        await tiltifyPollService().start(campaignId, pollingOptions);
 
         // Check if we failed starting the polling service
         if (!tiltifyPollService().isStarted(campaignId)) {
@@ -544,6 +553,27 @@ export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
                     default: 5,
                     description:
                         "How often to poll Tiltify for new donations (in seconds)."
+                },
+                donationMatchesPollingMultiplier: {
+                    title: "Donation Matches Polling Multiplier",
+                    type: "number",
+                    default: 3,
+                    description:
+                        "Every how many cycles do we check for new donation Matches ? "
+                },
+                milestonesPollingMultiplier: {
+                    title: "Milestones Polling Multiplier",
+                    type: "number",
+                    default: 10,
+                    description:
+                        "Every how many cycles do we check for new milestones ? "
+                },
+                verboseMode: {
+                    title: "Verbose mode",
+                    type: "boolean",
+                    default: false,
+                    description:
+                        "Log extra data (for development purposes)"
                 }
             }
         },

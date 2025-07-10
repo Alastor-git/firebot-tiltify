@@ -58,6 +58,7 @@ export abstract class AbstractPollService<Options extends PollingOptions = Polli
         this.defaultPollingOptions = getDefaultPollingOptions();
     }
 
+    // TODO: Shouldn't this be used instead of reconnecting when changing options ? 
     public setPollingInterval(
         campaignId: string,
         interval: number
@@ -85,13 +86,13 @@ export abstract class AbstractPollService<Options extends PollingOptions = Polli
 
     public async start(
         campaignId: string,
-        interval?: number
+        pollingOptions: Partial<Options>
     ) {
         this.clearPoll(campaignId);
-        this.pollingOptions[campaignId] = this.defaultPollingOptions;
-        if (interval) {
-            this.pollingOptions[campaignId].pollingInterval = interval;
-        }
+        this.pollingOptions[campaignId] = {
+            ...this.defaultPollingOptions,
+            ...pollingOptions
+        };
 
         this.pollerStarted[campaignId] = true;
         await this.startPollActions(campaignId);
