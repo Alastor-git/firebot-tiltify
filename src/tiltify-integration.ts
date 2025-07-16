@@ -27,12 +27,14 @@ import {
     integrationManager,
     variableManager,
     eventManager,
-    eventFilterManager
+    eventFilterManager,
+    uiExtensionManager
 } from "@shared/firebot-modules";
 import { TiltifyAuthManager } from "./auth-manager";
 import { TILTIFY_INTEGRATION_ID } from "./constants";
 import { TiltifyDonationMatchCollection } from "./types/donation-match";
 import { TiltifyPollingOptions } from "./services/pollService/tiltify-poll-service";
+import { tiltifyUIExtension } from "./frontend/tiltify-ui-extension";
 
 /**
  * Description placeholder
@@ -180,6 +182,10 @@ export class TiltifyIntegration
         for (const filter of filters) {
             eventFilterManager.registerFilter(filter);
         }
+
+        // Register the UI elements
+        logger.debug(`Registering Tiltify UI Extension`);
+        uiExtensionManager?.registerUIExtension(tiltifyUIExtension);
 
         this.on("token-refreshed", ({ integrationId }) => {
             if (integrationId === this.integrationId) {

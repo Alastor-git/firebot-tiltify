@@ -10,6 +10,7 @@ export declare let eventFilterManager: ScriptModules["eventFilterManager"];
 export declare let httpServer: HttpServerManager;
 export declare let variableManager: ScriptModules["replaceVariableManager"];
 export declare let integrationManager: ScriptModules["integrationManager"];
+export declare let uiExtensionManager: ScriptModules["uiExtensionManager"];
 export declare let jsonDb: unknown;
 export declare let utils: ScriptModules["utils"];
 export function initModules(scriptModules: ScriptModules): void {
@@ -21,6 +22,7 @@ export function initModules(scriptModules: ScriptModules): void {
     eventFilterManager = scriptModules.eventFilterManager;
     variableManager = scriptModules.replaceVariableManager;
     integrationManager = scriptModules.integrationManager;
+    uiExtensionManager = scriptModules.uiExtensionManager;
     jsonDb = scriptModules.JsonDb;
     utils = scriptModules.utils;
     httpServer = scriptModules.httpServer;
