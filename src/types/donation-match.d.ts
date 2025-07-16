@@ -1,50 +1,67 @@
 import { TiltifyMoney } from "./shared";
 
+/**
+ * Donation Match data provided by Tiltify
+ */
 export type TiltifyDonationMatch = {
+    /**
+     * Tiltify ID for the Donation Match
+     */
     id: string;
+    /**
+     * Tiltify ID for the donation associated with the Match
+     */
     donation_id: string | null;
+    /**
+     * Is the Match still active ?
+     */
     active: boolean;
+    /**
+     * Name of the user doing the matching
+     */
     matched_by: string;
-    // Time data
-    inserted_at: string; // Timestamp of the match creation
-    starts_at: string; // Timestamp of when the donation match became active ?
-    // FIXME: Seems to be set to ends_at at all times
-    completed_at: string | null; // Timestamp of when the match ended (amount reached of end time reached)
-    ends_at: string; // Timestamp of when the donation match will expire
-    updated_at: string;// Timestamp when the object was last updated.
-    // FIXME: Seems stuck at inserted at as long as the match is active. Then equals completed_at afterwards. 
-    // Money data
-    match_type?: string; // 'all' if the money is given anyway at the end of the match, 'amount' if the non matched money is refunded.
-    started_at_amount: TiltifyMoney; // The money raised by the campaign when the match started
-    amount: TiltifyMoney; // FIXME: Seems identical to pledged_amount
-    pledged_amount: TiltifyMoney; // The amount of money that can be matched before the pledge ends
-    total_amount_raised: TiltifyMoney; // The amount of money that has been matched so far
+    /**
+     * JSON Date of the match creation
+     */
+    inserted_at: string;
+    /**
+     * JSON date seems to be set to ends_at at all times
+     */
+    starts_at: string;
+    /**
+     * null until the donation match completes, then the JSON date of the match completion.
+     * Same as ends_at if the match expired.
+     */
+    completed_at: string | null;
+    /**
+     * JSON date of when the donation match expires
+     */
+    ends_at: string;
+    /**
+     * JSON date. equals inserted_at as long as the match is active, then completed_at afterwards
+     */
+    updated_at: string;
+    /**
+     * Supposedly 'all' if the money is given anyway at the end of the match, 'amount' if the non matched money is refunded.
+     * Doesn't seem to be actually used.
+     */
+    match_type?: string; // FIXME: Is this ever used ?
+    /**
+     * The money raised by the campaign when the match started
+     */
+    started_at_amount: TiltifyMoney;
+    /**
+     * Seems identical to pledged_amount
+     */
+    amount: TiltifyMoney; // FIXME: is it ever different ?
+    /**
+     * The amount of money that can be matched before the pledge ends
+     */
+    pledged_amount: TiltifyMoney;
+    /**
+     * The amount of money that has been matched so far
+     */
+    total_amount_raised: TiltifyMoney;
 };
 
 export type TiltifyDonationMatchCollection = {[matchId: string]: TiltifyDonationMatch};
-
-/*
- * Polling Starts :
- * - Pull donation matches from database
- * - Ask API for any update since last update to donation matches
- * - If new active donation matches, Raise New match event
- * - If new completed donation matches, store them but ignore them
- * - Update database for donation matches if anything changed
- *
- * Update donation :
- * - If new donation
- *   - check its donation matches for unknown ones
- *   - If new match, raise new donation matche event
- *   - check all active donation matches for if completed
- *   - If completed match, raise donation match end event
- *   - check all active donation matches for if deadline expired
- *   - If expired match, raise donation match end event
- *   - Update database for donation matches if anything changed
- *
- * - If no new donation
- *   - ask API for updates to donation matches
- *   - If new match, raise new donation matche event
- *   - check updates for if match completed
- *   - If completed match, raise donation match end event
- *   - Update database for donation matches if anything changed
- */
