@@ -9,7 +9,7 @@ export type TiltifyDonationMatch = {
      */
     id: string;
     /**
-     * Tiltify ID for the donation associated with the Match
+     * Tiltify ID for the donation associated with the Match that happens when the match ends.
      */
     donation_id: string | null;
     /**
@@ -43,17 +43,19 @@ export type TiltifyDonationMatch = {
     updated_at: string;
     /**
      * Supposedly 'all' if the money is given anyway at the end of the match, 'amount' if the non matched money is refunded.
-     * Doesn't seem to be actually used.
+     * Currently not provided by Tiltify. This is a bug.
      */
-    match_type?: string; // FIXME: Is this ever used ?
+    match_type?: string;
     /**
      * The money raised by the campaign when the match started
      */
     started_at_amount: TiltifyMoney;
     /**
-     * Seems identical to pledged_amount
+     * The money that will actually be given at the end of the match.
+     * Identical to pledged_amount if the match_type is 'all'
+     * Identical to total_amount_raised if the match_type is 'amount'
      */
-    amount: TiltifyMoney; // FIXME: is it ever different ?
+    amount: TiltifyMoney;
     /**
      * The amount of money that can be matched before the pledge ends
      */

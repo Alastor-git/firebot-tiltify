@@ -6,12 +6,14 @@ import { TiltifyRewardClaim } from "@/types/campaign-reward";
 import { TiltifyCampaign } from "@/types/campaign";
 import { TiltifyCause } from "@/types/cause";
 
+import { tiltifyPollService } from "@/services";
+
 import {
     CampaignEvent,
     TiltifyCampaignEventData,
     getManualMetadata as getCampaignManualMetadata
 } from "./campaign-event-data";
-import { TiltifyDonationMatchData } from "./donation-match-event-data";
+import { createTiltifyDonationMatchData, TiltifyDonationMatchData } from "./donation-match-event-data";
 
 
 export type TiltifyRewardClaimEventData = {
@@ -33,6 +35,10 @@ export type TiltifyDonationEventData = TiltifyCampaignEventData & {
     comment: string;
     pollOptionId: string;
     challengeId: string;
+    /**
+     * Is this a donation resulting from a donation match ending ?
+     */
+    isMatchDonation: boolean;
 };
 
 const getManualMetadata: TiltifyDonationEventData = {
@@ -54,7 +60,8 @@ const getManualMetadata: TiltifyDonationEventData = {
     matchMultiplier: 1,
     comment: "Thanks for the stream!",
     pollOptionId: "",
-    challengeId: ""
+    challengeId: "",
+    isMatchDonation: false
 };
 
 function getMessage(eventData: TiltifyDonationEventData) {
@@ -110,12 +117,17 @@ export class DonationEvent {
         campaignData?: TiltifyCampaign | CampaignEvent,
         causeData?: TiltifyCause
     ) {
+        const pollerData = tiltifyPollService().pollerData;
+
         let campaignEvent: CampaignEvent;
         if (campaignData instanceof CampaignEvent) {
             campaignEvent = campaignData;
         } else {
             campaignEvent = new CampaignEvent(campaignData, causeData);
         }
+
+        const campaignId: string = campaignEvent.data.campaignInfo.campaignId;
+
         this.data = {
             ...campaignEvent.valueOf(),
             from: donationData?.donor_name ?? "",
@@ -132,29 +144,12 @@ export class DonationEvent {
                 };
                 return rewardClaimEventData;
             }) ?? [],
-            matches: donationData?.donation_matches?.map<TiltifyDonationMatchData>((match) => {
-                // hasExpired refers to the time remaining when the donation was made. If it expired, ends_at === completed_at
-                const nowTimestamp: number = donationData.completed_at ? new Date(donationData.completed_at).getTime() : Date.now();
-                const endTimestamp: number = new Date(match.ends_at).getTime();
-                const amountPledged: number = Number(match.pledged_amount?.value ?? 0);
-                const amountMatched: number = Number(match.total_amount_raised?.value ?? 0);
-                const matchData: TiltifyDonationMatchData = {
-                    id: match.id,
-                    matchedBy: match.matched_by,
-                    amountPledged: amountPledged,
-                    amountMatched: amountMatched,
-                    endTimestamp: Math.floor(endTimestamp / 1000),
-                    remainingTime: match.active ? Math.floor((endTimestamp - nowTimestamp) / 1000) : 0,
-                    isActive: match.active,
-                    hasCompleted: !match.active && amountPledged === amountMatched,
-                    hasExpired: !match.active && endTimestamp <= nowTimestamp
-                };
-                return matchData;
-            }) ?? [],
+            matches: donationData?.donation_matches?.map<TiltifyDonationMatchData>(match => createTiltifyDonationMatchData(match)) ?? [],
             matchMultiplier: (donationData?.donation_matches?.length ?? 0) + 1,
             comment: donationData?.donor_comment ?? "",
             pollOptionId: donationData?.poll_option_id ?? "",
-            challengeId: donationData?.target_id ?? ""
+            challengeId: donationData?.target_id ?? "",
+            isMatchDonation: Object.values(pollerData[campaignId].donationMatches).some(match => match.donation_id === donationData?.id)
         };
     }
 

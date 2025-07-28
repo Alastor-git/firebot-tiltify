@@ -21,7 +21,7 @@ export const TiltifyDonationMatchGetVariable: ReplaceVariable = {
                 usage: "tiltifyDonationMatchGet[id, property]",
                 description:
 `Returns the value of the given property for the donation match with the given id or null if the property doesn't exist. 
-Valid properties are 'id', 'matchesBy', 'amountPledged', 'amountMatched', 'endTimestamp', 'remainingTime', 'hasExpired', 'hasCompleted' and 'isActive'. `
+Valid properties are 'id', 'matchedBy', 'amountPledged', 'amountMatched', 'isDonatingAllPledged', 'endTimestamp', 'remainingTime', 'hasExpired', 'hasCompleted' and 'isActive'. `
             }
         ],
         possibleDataOutput: [OutputDataType.NUMBER, OutputDataType.TEXT, OutputDataType.BOOLEAN, OutputDataType.OBJECT, OutputDataType.NULL]

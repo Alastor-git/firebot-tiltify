@@ -10,5 +10,6 @@ export const TILTIFY_DONATION_EVENT_ID = "donation";
 export const TILTIFY_MILESTONE_EVENT_ID = "milestone";
 export const TILTIFY_MATCH_STARTED_EVENT_ID = "donation match started";
 export const TILTIFY_MATCH_ENDED_EVENT_ID = "donation match ended";
+export const TILTIFY_DONATION_FILTER_ID = `${TILTIFY_EVENT_SOURCE_ID}:filter:donation`;
 
 export const TILTIFY_PAGE_ID = "main";

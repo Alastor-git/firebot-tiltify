@@ -1,6 +1,6 @@
 import { TILTIFY_FRONTEND_ID, TILTIFY_PAGE_ID } from "@/constants";
 import { AngularJsPage, UIExtension } from "@crowbartools/firebot-custom-scripts-types/types/modules/ui-extension-manager";
-import ng from "angular";
+import { IScope } from "@crowbartools/firebot-custom-scripts-types/node_modules/@types/angular";
 
 /*const tiltifyPage: AngularJsPage = {
     id: `${TILTIFY_FRONTEND_ID} ${TILTIFY_PAGE_ID}`,
@@ -24,7 +24,7 @@ interface TestService {
     someFunction: () => string;
 }
 
-interface Scope extends ng.IScope {
+interface Scope extends IScope {
     test: string;
 }
 

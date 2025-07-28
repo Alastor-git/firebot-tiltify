@@ -485,6 +485,7 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
     Started At: $${match.started_at_amount?.value ?? 0}
     Pledged   : $${match.pledged_amount?.value ?? 0}
     Matched   : $${match.total_amount_raised?.value ?? 0}
+    Match Type  : ${match.match_type}
     Created On  : ${new Date(match.inserted_at).toUTCString()}
     Expires On  : ${new Date(match.ends_at).toUTCString()}${
         match.completed_at ? `
@@ -604,7 +605,6 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
             );
         });
         for (const expiredMatch of expiredDonationMatches) {
-            // TODO: Check : If the match_type === 'all', when the match expired, is it registered as a new donation ? Or do we need to manually update the campaign ?
             expiredMatch.active = false;
             // eslint-disable-next-line camelcase
             expiredMatch.completed_at = expiredMatch.ends_at;
@@ -667,7 +667,8 @@ Matching : x${eventDetails.matchMultiplier}${eventDetails.matchMultiplier === 1 
 Total raised : $${eventDetails.campaignInfo.amountRaised}
 Rewards: ${eventDetails.rewards.map(rewardClaim => `${rewardClaim.quantityRedeemed} * ${rewardClaim.name ?? rewardClaim.id}`).join(", ")}
 Campaign : ${eventDetails.campaignInfo.name}
-Cause : ${eventDetails.campaignInfo.cause}`);
+Cause : ${eventDetails.campaignInfo.cause}
+Match Ending Donation ? ${eventDetails.isMatchDonation}`);
         // Trigger the event
         eventManager.triggerEvent(
             TILTIFY_EVENT_SOURCE_ID,
@@ -850,6 +851,12 @@ Cause: ${eventDetails.campaignInfo.cause}`);
                 return;
             }
 
+            // If the MatchUpdate has no math_type, assign it
+            if (donationMatchUpdate.match_type === undefined) {
+                // eslint-disable-next-line camelcase
+                donationMatchUpdate.match_type = savedDonationMatch.match_type;
+            }
+
             if (savedDonationMatch.active && !donationMatchUpdate.active) {
                 // The donation match completed
 
@@ -901,6 +908,13 @@ Cause: ${eventDetails.campaignInfo.cause}`);
             }
         } else {
             // It's a previously unknown match
+
+            // Assign a match_type if it doesn't exist
+            if (donationMatchUpdate.match_type === undefined) {
+                // eslint-disable-next-line camelcase
+                donationMatchUpdate.match_type = donationMatchUpdate.pledged_amount?.value === donationMatchUpdate.amount?.value ? 'all' : 'amount';
+            }
+
             if (donationMatchUpdate.active) {
                 // The donation match started
 

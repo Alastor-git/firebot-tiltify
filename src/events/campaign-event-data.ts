@@ -3,6 +3,7 @@ import { TiltifyCause } from "@/types/cause";
 
 export type TiltifyCampaignEventData = {
     campaignInfo: {
+        campaignId: string;
         name: string;
         cause: string;
         causeLegalName: string;
@@ -16,6 +17,7 @@ export type TiltifyCampaignEventData = {
 
 export const getManualMetadata: TiltifyCampaignEventData = {
     campaignInfo: {
+        campaignId: "318d3436-1ff9-4d24-8720-70271943023e",
         name: "GOTEL",
         cause: "Lupus Foundation of America",
         causeLegalName: "Lupus Foundation of America, Inc.",
@@ -33,6 +35,7 @@ export class CampaignEvent {
     constructor(campaignData?: TiltifyCampaign, causeData?: TiltifyCause) {
         const eventDetails: TiltifyCampaignEventData = {
             campaignInfo: {
+                campaignId: campaignData?.id ?? "",
                 name: campaignData?.name ?? "",
                 cause: causeData?.name ?? "",
                 causeLegalName: causeData?.name ?? "",
