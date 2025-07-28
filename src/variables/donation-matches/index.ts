@@ -11,3 +11,4 @@ export { TiltifyDonationMatchIsActiveVariable } from "./donation-match-is-active
 export { TiltifyDonationMatchGetVariable } from "./donation-match-get";
 export { TiltifyDonationMatchGetIdsVariable } from "./donation-match-get-ids";
 export { TiltifyDonationMatchGetActiveIdsVariable } from "./donation-match-get-active-ids";
+export { TiltifyDonationMatchIsDonatingAllPledgedVariable } from "./donation-match-is-donating-all-pledged";

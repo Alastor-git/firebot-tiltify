@@ -53,6 +53,7 @@ export type TiltifyDonationMatch = {
     /**
      * The money that will actually be given at the end of the match.
      * Identical to pledged_amount if the match_type is 'all'
+     * Identical to total_amount_raised if the match_type is 'amount'
      */
     amount: TiltifyMoney;
     /**

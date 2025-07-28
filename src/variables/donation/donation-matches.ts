@@ -28,7 +28,7 @@ The total number of matches ca be accessed through $donationMatchMultiplier. `
                 usage: "tiltifyDonationMatches[property]",
                 description:
 `Returns the array of the values of the given property for all donation matches in the current donation or null if the property doesn't exist. 
-Valid properties are 'id', 'matchesBy', 'amountPledged', 'amountMatched', 'endTimestamp', 'remainingTime', 'hasExpired', 'hasCompleted' and 'isActive'. `
+Valid properties are 'id', 'matchedBy', 'amountPledged', 'amountMatched', 'isDonatingAllPledged', 'endTimestamp', 'remainingTime', 'hasExpired', 'hasCompleted' and 'isActive'. `
             },
             {
                 usage: "tiltifyDonationMatches[index, property]",

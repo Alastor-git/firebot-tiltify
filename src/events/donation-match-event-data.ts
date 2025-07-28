@@ -29,6 +29,10 @@ export type TiltifyDonationMatchData = {
      */
     amountMatched: number;
     /**
+     * Is all the money pleedged being donated when the match ends whether or not it has been matched ?
+     */
+    isDonatingAllPledged: boolean;
+    /**
      * UNIX Timestamp of the time the matching expires in seconds
      */
     endTimestamp: number;
@@ -61,6 +65,10 @@ export function createTiltifyDonationMatchData(donationMatch: TiltifyDonationMat
             matchedBy: donationMatch.matched_by,
             amountPledged: amountPledged,
             amountMatched: amountMatched,
+            isDonatingAllPledged:
+                donationMatch.match_type === 'all' ? true :
+                donationMatch.match_type === 'amount' ? false :
+                (amountPledged === (donationMatch.amount?.value ?? 0)),
             endTimestamp: Math.floor(endTimestamp / 1000),
             remainingTime: donationMatch.active ? Math.floor((endTimestamp - nowTimestamp) / 1000) : 0,
             isActive: donationMatch.active,
@@ -77,6 +85,7 @@ const getStartedEventManualMetadata: TiltifyDonationMatchEventData = {
     matchedBy: "Awesome Donation Matcher",
     amountPledged: 500,
     amountMatched: 0,
+    isDonatingAllPledged: false,
     endTimestamp: 1751738400,
     remainingTime: 3600,
     hasExpired: false,
@@ -115,6 +124,7 @@ const getEndedEventManualMetadata: TiltifyDonationMatchEventData = {
     matchedBy: "Awesome Donation Matcher",
     amountPledged: 500,
     amountMatched: 500,
+    isDonatingAllPledged: false,
     endTimestamp: 1751738400,
     remainingTime: 0,
     hasCompleted: true,
