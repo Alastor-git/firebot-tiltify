@@ -14,3 +14,4 @@ export { TiltifyDonationMatchIdsVariable } from "./donation-match-ids";
 export { TiltifyDonationMatchNamesVariable } from "./donation-match-names";
 export { TiltifyDonationMatchMultiplierVariable } from "./donation-match-multiplier";
 export { TiltifyDonationMatchesVariable } from "./donation-matches";
+export { TiltifyDonationIsMatchVariable } from "./donation-is-match";

@@ -485,6 +485,7 @@ export class TiltifyPollService extends AbstractPollService<TiltifyPollingOption
     Started At: $${match.started_at_amount?.value ?? 0}
     Pledged   : $${match.pledged_amount?.value ?? 0}
     Matched   : $${match.total_amount_raised?.value ?? 0}
+    Match Type  : ${match.match_type}
     Created On  : ${new Date(match.inserted_at).toUTCString()}
     Expires On  : ${new Date(match.ends_at).toUTCString()}${
         match.completed_at ? `
@@ -666,7 +667,8 @@ Matching : x${eventDetails.matchMultiplier}${eventDetails.matchMultiplier === 1 
 Total raised : $${eventDetails.campaignInfo.amountRaised}
 Rewards: ${eventDetails.rewards.map(rewardClaim => `${rewardClaim.quantityRedeemed} * ${rewardClaim.name ?? rewardClaim.id}`).join(", ")}
 Campaign : ${eventDetails.campaignInfo.name}
-Cause : ${eventDetails.campaignInfo.cause}`);
+Cause : ${eventDetails.campaignInfo.cause}
+Match Ending Donation ? ${eventDetails.isMatchDonation}`);
         // Trigger the event
         eventManager.triggerEvent(
             TILTIFY_EVENT_SOURCE_ID,
