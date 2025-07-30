@@ -1,25 +1,80 @@
 import { TILTIFY_FRONTEND_ID, TILTIFY_PAGE_ID } from "@/constants";
-import { AngularJsPage, UIExtension } from "@crowbartools/firebot-custom-scripts-types/types/modules/ui-extension-manager";
+import { AngularJsComponent, AngularJsPage, UIExtension } from "@crowbartools/firebot-custom-scripts-types/types/modules/ui-extension-manager";
 import { IScope } from "@crowbartools/firebot-custom-scripts-types/node_modules/@types/angular";
 
-/*const tiltifyPage: AngularJsPage = {
+const tiltifyPage: AngularJsPage = {
     id: `${TILTIFY_FRONTEND_ID} ${TILTIFY_PAGE_ID}`,
     name: "Tiltify",
     icon: "fa-hands-heart",
     fullPage: true,
     disableScroll: true,
     type: "angularjs",
-    template: "<div>Some template</div>",
+    template: "<div><tiltify-donations-table></tiltify-donations-table></div>",
     controller: () => {}
+};
+
+const DonationTableComponent: AngularJsComponent = {
+    name: "tiltifyDonationsTable",
+    bindings: {
+        subcommand: "=",
+        fullyEditable: "<",
+        cmdTrigger: "@",
+        onDelete: "&",
+        onEdit: "&"
+    },
+    template: `
+        <div class="mb-4">
+            <div class="sys-command-row" ng-init="hidePanel = true" ng-click="hidePanel = !hidePanel" ng-class="{'expanded': !hidePanel}">
+                <div class="pl-8"" style="flex-basis: 30%;">
+                    name
+                </div>
+
+                <div style="width: 25%">
+                    <span style="text-transform: capitalize;">thing thing 1</span>
+                </div>
+
+                <div style="width: 25%">
+                    <span style="text-transform: capitalize;">thing 2</span>
+                    <tooltip type="info" text="tooltip"></tooltip>
+                </div>
+
+                <div style="width: 25%">
+                    <div style="min-width: 75px">
+                        <span class="status-dot" ng-class="{'active': $ctrl.subcommand.active, 'notactive': !$ctrl.subcommand.active}"></span>
+                        {{$ctrl.subcommand.active ? "Active" : "Disabled"}}
+                    </div>
+                </div>
+
+                <div style="flex-basis:30px; flex-shrink: 0;">
+                    <i class="fas" ng-class="{'fa-chevron-right': hidePanel, 'fa-chevron-down': !hidePanel}"></i>
+                </div>
+            </div>
+
+            <div uib-collapse="hidePanel" class="sys-command-expanded">
+                <div class="sub-command p-8">
+                    Hidden part
+                </div>
+            </div>
+        </div>
+    `,
+    controller: function() {
+        const $ctrl = this;
+    }
 };
 
 export const tiltifyUIExtension: UIExtension = {
     id: TILTIFY_FRONTEND_ID,
     pages: [
         tiltifyPage
-    ]
-};*/
+    ],
+    providers: {
+        components: [
+            DonationTableComponent
+        ]
+    }
+};
 
+/*
 interface TestService {
     someFunction: () => string;
 }
@@ -110,3 +165,4 @@ export const tiltifyUIExtension: UIExtension = {
         ]
     }
 };
+*/
