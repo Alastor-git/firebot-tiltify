@@ -1,6 +1,9 @@
 import { TILTIFY_FRONTEND_ID, TILTIFY_PAGE_ID } from "@/constants";
+import { TiltifyDonationEventData } from "@/events/donation-event-data";
+import { logger } from "@/tiltify-logger";
+import { TiltifyDonation } from "@/types/donation";
 import { AngularJsComponent, AngularJsPage, UIExtension } from "@crowbartools/firebot-custom-scripts-types/types/modules/ui-extension-manager";
-import { IScope } from "angular";
+import { IComponentOptions, IController, IScope } from "angular";
 
 const tiltifyPage: AngularJsPage = {
     id: `${TILTIFY_FRONTEND_ID} ${TILTIFY_PAGE_ID}`,
@@ -13,14 +16,10 @@ const tiltifyPage: AngularJsPage = {
     controller: () => {}
 };
 
-const DonationTableComponent: AngularJsComponent = {
-    name: "tiltifyDonationsTable",
+const DonationRowComponent: AngularJsComponent = {
+    name: "tiltifyDonationsRow",
     bindings: {
-        subcommand: "=",
-        fullyEditable: "<",
-        cmdTrigger: "@",
-        onDelete: "&",
-        onEdit: "&"
+        donation: "="
     },
     template: `
         <div class="mb-4">
@@ -40,8 +39,8 @@ const DonationTableComponent: AngularJsComponent = {
 
                 <div style="width: 25%">
                     <div style="min-width: 75px">
-                        <span class="status-dot" ng-class="{'active': $ctrl.subcommand.active, 'notactive': !$ctrl.subcommand.active}"></span>
-                        {{$ctrl.subcommand.active ? "Active" : "Disabled"}}
+                        <span class="status-dot" ng-class="{'active': $ctrl.donation.active, 'notactive': !$ctrl.donation.active}"></span>
+                        {{$ctrl.donation.active ? "Active" : "Disabled"}}
                     </div>
                 </div>
 
@@ -62,6 +61,65 @@ const DonationTableComponent: AngularJsComponent = {
     }
 };
 
+const DonationTableComponent: AngularJsComponent = {
+    name: "tiltifyDonationsTable",
+    bindings: {
+        donations: "="
+    },
+    template: `
+    <tiltify-donations-row
+        ng-repeat="donation in $ctrl.donations track by $index"
+        donation="donation"
+    ></tiltify-donations-row>
+    `,
+    controller: function($scope: IScope) {
+        const $ctrl: IController = this;
+
+        logger.debug(JSON.stringify($scope));
+        logger.debug(JSON.stringify($ctrl));
+
+        $ctrl.$onInit = function () {
+            const donations: TiltifyDonationEventData[] = [
+                {
+                    campaignInfo: {
+                        campaignId: "318d3436-1ff9-4d24-8720-70271943023e",
+                        name: "GOTEL",
+                        cause: "Lupus Foundation of America",
+                        causeLegalName: "Lupus Foundation of America, Inc.",
+                        fundraisingGoal: 1000,
+                        originalGoal: 500,
+                        supportingRaised: 500,
+                        amountRaised: 1000,
+                        totalRaised: 1500
+                    },
+                    from: "Tiltify",
+                    donationAmount: 4.2,
+                    rewards: [
+                        {
+                            id: "",
+                            name: "Default reward",
+                            quantityAvailable: 10,
+                            quantityRedeemed: 1,
+                            quantityRemaining: 5,
+                            cost: 5,
+                            description: "This is a dummy reward"
+                        }
+                    ],
+                    matches: [],
+                    matchMultiplier: 1,
+                    comment: "Thanks for the stream!",
+                    pollOptionId: "",
+                    challengeId: "",
+                    isMatchDonation: false
+                }
+            ];
+
+            $ctrl.donations = donations;
+        };
+
+    }
+};
+
 export const tiltifyUIExtension: UIExtension = {
     id: TILTIFY_FRONTEND_ID,
     pages: [
@@ -69,6 +127,7 @@ export const tiltifyUIExtension: UIExtension = {
     ],
     providers: {
         components: [
+            DonationRowComponent,
             DonationTableComponent
         ]
     }
