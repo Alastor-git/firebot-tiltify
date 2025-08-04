@@ -22,7 +22,8 @@ module.exports = {
             "@models": path.resolve(__dirname, "./src/models"),
             "@utils": path.resolve(__dirname, "./src/utils"),
             "@shared": path.resolve(__dirname, "./src/shared"),
-            "@services": path.resolve(__dirname, "./src/services")
+            "@services": path.resolve(__dirname, "./src/services"),
+            "@types": path.resolve(__dirname, "./src/@types")
         }
     },
     module: {

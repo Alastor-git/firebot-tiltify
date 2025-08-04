@@ -11,12 +11,13 @@
         "resolveJsonModule": true,
         "experimentalDecorators": true,
         "downlevelIteration": true,
-        "skipLibCheck": false,
+        "skipLibCheck": true,
         "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"],
             "@shared/*": ["./src/shared/*"],
-            "@services/*": ["./src/services/*"]
+            "@services/*": ["./src/services/*"],
+            "@types/*": ["./src/@types/*"]
         }
     },
     "include": ["./src/**/*", "tests/mocks/mocks.test.ts"]

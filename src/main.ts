@@ -1,7 +1,7 @@
 import {
-    Firebot,
-    Integration
+    Firebot
 } from "@crowbartools/firebot-custom-scripts-types";
+import { Integration } from "./@types/firebot-custom-script-types/integration-manager";
 
 import { TiltifySettings, integrationDefinition } from "./tiltify-integration";
 import { logger } from "./tiltify-logger";

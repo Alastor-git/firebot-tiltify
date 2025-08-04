@@ -3,9 +3,9 @@ import {
     IntegrationController,
     IntegrationData,
     IntegrationDefinition,
-    LinkData,
-    AuthDetails
-} from "@crowbartools/firebot-custom-scripts-types";
+    LinkData
+} from "./@types/firebot-custom-script-types/integration-manager";
+import { AuthDetails } from "./@types/firebot-custom-script-types/auth-manager";
 import { TypedEmitter } from "tiny-typed-emitter";
 
 import { ReplaceVariable } from "@crowbartools/firebot-custom-scripts-types/types/modules/replace-variable-manager";

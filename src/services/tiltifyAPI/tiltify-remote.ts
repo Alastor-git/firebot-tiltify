@@ -11,10 +11,12 @@ import { TiltifyPoll } from "@/types/poll";
 import { TiltifyMilestone } from "@/types/milestone";
 
 import { logger } from "@/tiltify-logger";
-import { AuthDetails } from "@crowbartools/firebot-custom-scripts-types";
+import {
+    AuthDetails,
+    AuthProviderDefinition
+} from "@/@types/firebot-custom-script-types/auth-manager";
 import { TiltifyTarget } from "@/types/target";
 import { TiltifyAuthManager } from "@/auth-manager";
-import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types/types/modules/auth-manager";
 import { TiltifyAPIError } from "@/shared/errors";
 import { TiltifyDonationMatch } from "@/types/donation-match";
 

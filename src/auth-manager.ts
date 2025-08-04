@@ -1,7 +1,6 @@
 import {
-    AuthDetails,
     Integration
-} from "@crowbartools/firebot-custom-scripts-types";
+} from "./@types/firebot-custom-script-types/integration-manager";
 import { tiltifyAPIController, tiltifyIntegration } from "@/services";
 
 import { integrationManager } from "@shared/firebot-modules";
@@ -9,7 +8,10 @@ import { logger } from "./tiltify-logger";
 import {
     TiltifySettings
 } from "@/tiltify-integration";
-import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types/types/modules/auth-manager";
+import {
+    AuthProviderDefinition,
+    AuthDetails
+} from "./@types/firebot-custom-script-types/auth-manager";
 import { TILTIFY_INTEGRATION_ID } from "./constants";
 
 /**
