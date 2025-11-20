@@ -11,7 +11,7 @@
         "resolveJsonModule": true,
         "experimentalDecorators": true,
         "downlevelIteration": true,
-        "skipLibCheck": false,
+        "skipLibCheck": true,
         "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"],
@@ -19,5 +19,6 @@
             "@services/*": ["./src/services/*"]
         }
     },
-    "include": ["./src/**/*", "tests/mocks/mocks.test.ts"]
+    "include": ["./src/**/*", "tests/mocks/mocks.test.ts"],
+    "exclude": ["node_modules", ".vscode"]
 }

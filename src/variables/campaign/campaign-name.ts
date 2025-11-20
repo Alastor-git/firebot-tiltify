@@ -13,7 +13,7 @@ export const TiltifyCampaignNameVariable: ReplaceVariable = {
     definition: {
         handle: "tiltifyCampaignName",
         description:
-            "The legal cause name of the Tiltify campaign related to the event",
+            "The name of the Tiltify campaign related to the event",
         triggers: {
             event: [
                 `${TILTIFY_EVENT_SOURCE_ID}:${TILTIFY_DONATION_EVENT_ID}`,

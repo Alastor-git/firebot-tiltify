@@ -9,7 +9,7 @@ import { TiltifyMilestoneReachedEventData } from "@/events/milestone-reached-eve
 export const TiltifyMilestoneAmountVariable: ReplaceVariable = {
     definition: {
         handle: "tiltifyMilestoneAmount",
-        description: "The amount connected to reach the Tiltify Milestone",
+        description: "The amount collected to reach the Tiltify Milestone",
         triggers: {
             event: [`${TILTIFY_EVENT_SOURCE_ID}:${TILTIFY_MILESTONE_EVENT_ID}`],
             manual: true

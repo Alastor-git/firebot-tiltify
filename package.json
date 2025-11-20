@@ -1,7 +1,7 @@
 {
     "name": "firebot-tiltify",
     "scriptOutputName": "firebot-tiltify",
-    "version": "2.0.1",
+    "version": "3.0.1",
     "description": "A Firebot plugin for integration with Tiltify campaigns.",
     "main": "",
     "scripts": {
@@ -42,7 +42,10 @@
         "typescript-eslint": "^8.22.0",
         "webpack": "^5.90.0",
         "webpack-cli": "^5.1.4",
-        "ws": "^8.2.2"
+        "ws": "^8.2.2",
+        "angular": "^1.8.0",
+        "moment": "^2.24.0",
+        "@twurple/api": "^7.2.1"
     },
     "dependencies": {
         "openapi-fetch": "^0.13.4"
