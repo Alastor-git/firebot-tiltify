@@ -17,7 +17,7 @@ Events are raised when :
 ## Installation
 
 To install the script: 
-- Download the [latest release of `firebot-tiltify.js`](https://github.com/Alastor-git/firebot-unit-converter/releases/download/v3.0.1/firebot-tiltify.js). 
+- Download the [latest release of `firebot-tiltify.js`](https://github.com/Alastor-git/firebot-tiltify/releases/download/v3.0.1/firebot-tiltify.js). 
 - In Firebot, access `File/Open Data Folder` to open your stream profile. 
 - Paste `firebot-tiltify.js` in the `scripts` folder. 
 - In Firebot's `Settings/Scripts`
