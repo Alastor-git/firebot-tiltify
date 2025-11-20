@@ -4,14 +4,49 @@ A [Firebot](https://firebot.app) plugin/custom script for interacting with [Tilt
 Based on the Tiltify Integration plugin by [zunderscore](https://github.com/zunderscore/firebot-tiltify). 
 Debugged and improved to cover wider needs and provide more functionality.
 
-Adds the following functionality to Firebot:
+## Summary
+
+This integration listens to a Tiltify Campaign, raises events in firebot when some things happen in the campaign and allows the commands and events to access a number of things about the campaign or associated the events. 
+
+Events are raised when : 
+- A Donation happens
+- A Donation Match starts
+- A Donation Match stops
+- A Milestone has been reached
+
+## Installation
+
+To install the script: 
+- Download the [latest release of `firebot-tiltify.js`](https://github.com/Alastor-git/firebot-unit-converter/releases/download/v3.0.1/firebot-tiltify.js). 
+- In Firebot, access `File/Open Data Folder` to open your stream profile. 
+- Paste `firebot-tiltify.js` in the `scripts` folder. 
+- In Firebot's `Settings/Scripts`
+    - Set `Custom Scripts` to `Enabled`
+    - Open `Manage Startup Scripts`, select `Add New Script` and select `firebot-tiltify.js`
+- In Firebot's `Settings/Integrations` Menu, a new `Tiltify` line will appear. 
+    - Link it
+    - Click `Configure` and input the ID of the campaign you want Firebot to receive events for.  
+    This ID can be located by clicking the `Donate` button on the campaign and copying the string of numbers and letters in the first part of the URI.  
+    For example, for the campaign of the [Rimworld Hot Potato 2025 event](https://tiltify.com/+rimworld-hot-potato-2025/rimworld-hot-potato-2025), the donation link URI is `https://donate.tiltify.com/d3b43e70-ae08-49a8-b6f9-b324e3392b61/details`. The campaign ID is `d3b43e70-ae08-49a8-b6f9-b324e3392b61`. 
+- At the bottom of the left menu, under `Connections`, a tiltify integration icon will have appeared, allowing you to connect or disconnect the integration. 
+- If you want some of the integration's events to appear in the Dashboard's activity feed, don't forget to enable them using the `...` menu of the feed. 
+
+The tiltify events and variables should now be available. 
+
+## More details
 
 - Events
     - Donation
     - Donation Match Started
     - Donation Match Ended
     - Milestone Reached
+
 - Variables
+    - Available even outside of events
+        - `$tiltifyDonationMatchGetActiveIds`: The Array of Ids of the active donation matches known for the active campaign. Null if the campaign is not being polled. 
+        - `$tiltifyDonationMatchGetIds`: The Array of Ids of the donation matches known for the active campaign. Null if the campaign is not being polled. 
+        - `$tiltifyDonationMatchGet[id, property?]`: Access the properties of the donation match with the given id
+        - `$tiltifyDonationMatchIsActive[Id]`: Returns whether the Id corresponds to an active match or not. Null if the match doesn't exist or the campaign isn't connected. 
     - For all events
         - `$tiltifyCampaignName`: The name of the Tiltify campaign related to the event
         - `$tiltifyCampaignCause`: The cause of the Tiltify campaign related to the event
@@ -53,11 +88,6 @@ Adds the following functionality to Firebot:
         - `$tiltifyDonationMatchName`: The Name of the person who is matching donations. 
         - `$tiltifyDonationMatchRemainingTime` (Match starting only): The remaining time before this donation match expires (in seconds). 
         - `$tiltifyDonationMatch[property?]`: Access the properties of the donation match associated with this event
-    - Always available
-        - `$tiltifyDonationMatchGetActiveIds`: The Array of Ids of the active donation matches known for the active campaign. Null if the campaign is not being polled. 
-        - `$tiltifyDonationMatchGetIds`: The Array of Ids of the donation matches known for the active campaign. Null if the campaign is not being polled. 
-        - `$tiltifyDonationMatchGet[id, property?]`: Access the properties of the donation match with the given id
-        - `$tiltifyDonationMatchIsActive[Id]`: Returns whether the Id corresponds to an active match or not. Null if the match doesn't exist or the campaign isn't connected. 
 - Event Filters (currently may not work)
     - Reward
     - Poll Option
