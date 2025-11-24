@@ -27,11 +27,15 @@ To install the script:
     - Link it
     - Click `Configure` and input the ID of the campaign you want Firebot to receive events for.  
     This ID can be located by clicking the `Donate` button on the campaign and copying the string of numbers and letters in the first part of the URI.  
-    For example, for the campaign of the [Rimworld Hot Potato 2025 event](https://tiltify.com/+rimworld-hot-potato-2025/rimworld-hot-potato-2025), the donation link URI is `https://donate.tiltify.com/d3b43e70-ae08-49a8-b6f9-b324e3392b61/details`. The campaign ID is `d3b43e70-ae08-49a8-b6f9-b324e3392b61`. 
+    For example, for the 2DKiri campaign of the [Rimworld Hot Potato 2025 event](https://tiltify.com/+rimworld-hot-potato-2025/rimworld-hot-potato-2025), the donation link URI is `https://donate.tiltify.com/01284dbe-d94d-4ae5-9955-6d3a1924e9cf/incentives`. The campaign ID is `01284dbe-d94d-4ae5-9955-6d3a1924e9cf`. 
 - At the bottom of the left menu, under `Connections`, a tiltify integration icon will have appeared, allowing you to connect or disconnect the integration. 
 - If you want some of the integration's events to appear in the Dashboard's activity feed, don't forget to enable them using the `...` menu of the feed. 
 
 The tiltify events and variables should now be available. 
+
+Notes: 
+- The campaign needs to be an individual campaign to function, not a team campaign or an event, since those 3 types of campaign are distinct from Tiltify's perspective.
+- The campaign needs to be active to be able to connect to it. 
 
 ## More details
 
