@@ -41,11 +41,7 @@
         "typescript": "^5.7.3",
         "typescript-eslint": "^8.22.0",
         "webpack": "^5.90.0",
-        "webpack-cli": "^5.1.4",
-        "ws": "^8.2.2",
-        "angular": "^1.8.0",
-        "moment": "^2.24.0",
-        "@twurple/api": "^7.2.1"
+        "webpack-cli": "^5.1.4"
     },
     "dependencies": {
         "openapi-fetch": "^0.13.4"
