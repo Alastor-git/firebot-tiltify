@@ -6,10 +6,11 @@ import {
     LinkData,
     AuthDetails
 } from "@crowbartools/firebot-custom-scripts-types";
+
 import { TypedEmitter } from "tiny-typed-emitter";
 
-import { ReplaceVariable } from "@crowbartools/firebot-custom-scripts-types/types/modules/replace-variable-manager";
-import { EventFilter } from "@crowbartools/firebot-custom-scripts-types/types/modules/event-filter-manager";
+import { ReplaceVariable } from "@crowbartools/firebot-custom-scripts-types";
+import { EventFilter } from "@crowbartools/firebot-custom-scripts-types";
 
 import * as path from "path";
 

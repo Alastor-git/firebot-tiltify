@@ -14,7 +14,7 @@ import { logger } from "@/tiltify-logger";
 import { AuthDetails } from "@crowbartools/firebot-custom-scripts-types";
 import { TiltifyTarget } from "@/types/target";
 import { TiltifyAuthManager } from "@/auth-manager";
-import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types/types/modules/auth-manager";
+import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types";
 import { TiltifyAPIError } from "@/shared/errors";
 import { TiltifyDonationMatch } from "@/types/donation-match";
 

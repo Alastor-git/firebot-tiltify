@@ -19,6 +19,6 @@
             "@services/*": ["./src/services/*"]
         }
     },
-    "include": ["./src/**/*", "tests/mocks/mocks.test.ts"],
+    "include": ["./src/**/*", "tests/mocks/mocks.test.ts", "src/node_modules/@crowbartools/firebot-custom-scripts-types/modules", "src/node_modules/@crowbartools/firebot-custom-scripts-types/index.d.ts"],
     "exclude": ["node_modules", ".vscode"]
 }
