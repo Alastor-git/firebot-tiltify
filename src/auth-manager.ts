@@ -9,7 +9,7 @@ import { logger } from "./tiltify-logger";
 import {
     TiltifySettings
 } from "@/tiltify-integration";
-import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types/types/modules/auth-manager";
+import { AuthProviderDefinition } from "@crowbartools/firebot-custom-scripts-types";
 import { TILTIFY_INTEGRATION_ID } from "./constants";
 
 /**
