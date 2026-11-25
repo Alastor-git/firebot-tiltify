@@ -598,9 +598,9 @@ export const integrationDefinition: IntegrationDefinition<TiltifySettings> = {
         redirectUriHost: "localhost",
         client: {
             id: // hidestream
-            "55ee54fe15f8ee41fac947b1123ba4ea134b31de112b947c5f1afcffec471337",
+            "1f7f15a3b8fb41641964c027b8e8b8fb3e1549801566c7bf89294ded3801fa45",
             secret: // hidestream
-            "b3fa00a003b5b1197d26ccc181d43801dd854906883b7279a386368a44f36293"
+            "548784f0846cd1894bc15c2e35227d1a9788562e8ab64da6d8ab0ab9f2f82231"
         },
         auth: {
             // @ts-ignore
